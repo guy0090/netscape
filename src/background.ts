@@ -39,6 +39,21 @@ export let win: BrowserWindow;
 export let attached = false;
 export let tray: Tray;
 
+autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName) => {
+  const dialogOpts = {
+    type: "info",
+    buttons: ["Restart", "Later"],
+    title: "Application Update",
+    message: process.platform === "win32" ? releaseNotes : releaseName,
+    detail:
+      "A new version has been downloaded. Restart the application to apply the updates.",
+  };
+
+  dialog.showMessageBox(dialogOpts).then((returnValue) => {
+    if (returnValue.response === 0) autoUpdater.quitAndInstall();
+  });
+});
+
 function setupTray() {
   tray = new Tray(
     isDevelopment
@@ -51,14 +66,16 @@ function setupTray() {
       label: "Reattach Overlay",
       click() {
         if (!attached)
-          overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.1.1");
+          overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.2.1");
       },
     },
     {
       label: "Quit",
       click() {
         packetParser.stopBroadcasting();
-        app.quit();
+        setTimeout(() => {
+          app.quit();
+        }, 100);
       },
     },
   ]);

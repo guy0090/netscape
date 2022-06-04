@@ -87,13 +87,16 @@ export class PacketParser extends EventEmitter {
     this.session = new Session();
 
     // Start sending session information
-    if (startSending) this.broadcast = this.startBroacasting(250);
+    if (startSending) this.startBroacasting(250);
+    else this.broadcast = undefined;
   }
 
   startBroacasting(tickRate = 100) {
-    return setInterval(() => {
-      this.broadcastSessionChange();
-    }, tickRate);
+    if (!this.broadcast) {
+      this.broadcast = setInterval(() => {
+        this.broadcastSessionChange();
+      }, tickRate);
+    }
   }
 
   stopBroadcasting() {

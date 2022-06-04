@@ -5,7 +5,7 @@
         class="meter-logo"
         :image="require(`@/assets/sprites/emojis/34.png`)"
       ></v-avatar>
-      <span class="draggable">&nbsp;v0.0.1 {{ getBossTitle() }}</span>
+      <span class="draggable">&nbsp;v{{ version }} {{ getBossTitle() }}</span>
       <v-col class="draggable"></v-col>
       <v-icon
         v-if="!compact"
@@ -110,6 +110,13 @@ export default defineComponent({
   mounted() {
     // if (this.vCons) this.vCons.destroy();
     // this.vCons = new VConsole({ theme: "dark" });
+    this.getVersion()
+      .then((version) => {
+        this.version = version;
+      })
+      .catch((err: Error) => {
+        console.error(err.message);
+      });
 
     this.applySettings();
     this.listenForIpcEvents();
@@ -122,6 +129,7 @@ export default defineComponent({
       "resetSession",
       "pauseSession",
       "resumeSession",
+      "getVersion",
     ]),
     resetSessionButton() {
       this.resetSession();
@@ -210,7 +218,6 @@ export default defineComponent({
             }
             break;
           case "session":
-            console.log("New session object", message);
             this.session = message;
             if (this.session.paused || this.isPaused) return;
             if (!this.sessionTimer && this.session.firstPacket !== 0)
@@ -433,6 +440,7 @@ export default defineComponent({
     let sessionDps = ref("0");
     let pausedFor = ref(0);
     let session = ref({} as any);
+    let version = ref("0.0.1");
 
     return {
       showConsoleCounter,
@@ -448,6 +456,7 @@ export default defineComponent({
       sessionDps,
       pausedFor,
       session,
+      version,
     };
   },
 

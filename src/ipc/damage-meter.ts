@@ -1,5 +1,5 @@
 import { packetParser } from "@/background";
-import { ipcMain } from "electron";
+import { ipcMain, app } from "electron";
 import AppStore from "@/persistance/store";
 
 class DamageMeterEvents {
@@ -34,6 +34,11 @@ class DamageMeterEvents {
             console.log("Client requested session resume");
             packetParser.resumeSession();
             break;
+          case "version":
+            return {
+              event: "version",
+              message: app.getVersion(),
+            };
           default:
             return { error: "Invalid event" };
         }
