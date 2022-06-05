@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { tryParseInt } from "./parser";
-import { ENTITY_TYPE } from "./objects";
+import { ENTITY_TYPE } from "../encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
 

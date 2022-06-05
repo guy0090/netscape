@@ -18,7 +18,7 @@ import { ElectronBridge } from "@/bridge/electron-bridge";
 import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
-import { Session } from "./bridge/objects";
+import { Session } from "./encounters/objects";
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -35,6 +35,8 @@ export const packetParser = new PacketParser(
   appStore.get("removeOverkillDamage") as boolean,
   appStore.get("pauseOnPhaseTransition") as boolean
 );
+
+export const windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow;
 export let attached = false;
 export let tray: Tray;
@@ -48,6 +50,7 @@ function setupTray() {
 
   const menu = Menu.buildFromTemplate([
     {
+      visible: windowMode === 1,
       label: "Reattach Overlay",
       click() {
         if (!attached)
@@ -98,18 +101,50 @@ async function createWindow() {
       });
   });
 
+  let extraParams: any = overlayWindow.WINDOW_OPTS;
+  if (windowMode === 0) {
+    extraParams = {
+      skipTaskbar: true,
+      frame: false,
+      show: true,
+      transparent: true,
+      resizable: true,
+    };
+  }
+
+  const { width, height } = appStore.get("meterDimensions") as Record<
+    string,
+    number
+  >;
+  const { x, y } = appStore.get("meterPosition") as Record<string, number>;
+
   win = new BrowserWindow({
     maxWidth: 900,
     maxHeight: 900,
     minHeight: 160,
     minWidth: 346,
+    x,
+    y,
+    width,
+    height,
     webPreferences: {
       nodeIntegration: process.env
         .ELECTRON_NODE_INTEGRATION as unknown as boolean,
       preload: path.join(__dirname, "preload.js"),
     },
-    ...overlayWindow.WINDOW_OPTS,
+    ...extraParams,
   });
+
+  if (windowMode === 0) {
+    globalShortcut.register("Ctrl + H", () => {
+      if (win) {
+        const isOnTop = win.isAlwaysOnTop();
+        if (isOnTop) win.setAlwaysOnTop(false, "normal");
+        else win.setAlwaysOnTop(true, "pop-up-menu");
+      }
+    });
+    win.setAlwaysOnTop(true, "pop-up-menu");
+  }
 
   win.on("resized", () => {
     console.log("resized", win.getBounds());
@@ -271,10 +306,12 @@ app.on("ready", async () => {
         });
     });
 
-    // Attach overlay delayed
-    setTimeout(() => {
-      initOverlay();
-    }, 2000);
+    if (windowMode === 1) {
+      // Attach overlay delayed
+      setTimeout(() => {
+        initOverlay();
+      }, 2000);
+    }
   });
 
   electronBridge.on("disconnected", () => {

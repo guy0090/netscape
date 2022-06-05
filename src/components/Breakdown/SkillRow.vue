@@ -29,12 +29,20 @@
         </v-col>
         <v-spacer></v-spacer>
         <v-col cols="auto" class="py-0">
-          <v-row class="pb-1" justify="end"
-            ><strong>{{ getSkillDps() }}/s</strong></v-row
-          >
-          <v-row justify="end"
-            ><small>{{ abbrNum(skill?.stats.damageDealt, 2) }}</small></v-row
-          >
+          <v-row class="pb-1" justify="end" style="padding-bottom: 7px">
+            <strong>{{ getSkillDps() }}/s</strong>
+          </v-row>
+          <v-row justify="end" style="padding-bottom: 7px">
+            <small>
+              {{ abbrNum(skill?.stats.damageDealt, 2) }}
+              <span style="font-size: 8pt">
+                ({{ getSkillDamagePercent() }}%)
+              </span>
+            </small>
+          </v-row>
+          <v-row justify="end">
+            <small>Max: {{ abbrNum(skill?.stats.topDamage, 2) }} </small>
+          </v-row>
         </v-col>
       </v-row>
     </v-card-content>
@@ -83,7 +91,7 @@
 </template>
 
 <script lang="ts">
-import { Skill } from "@/bridge/objects";
+import { Skill } from "@/encounters/objects";
 import { defineComponent } from "vue";
 
 export default defineComponent({

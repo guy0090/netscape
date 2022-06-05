@@ -129,7 +129,7 @@ export default defineComponent({
   methods: {
     ...mapActions(["updateSetting", "getSetting"]),
     applySettings() {
-      this.getSetting("pauseOnFightEnd")
+      this.getSetting("pauseOnPhaseTransition")
         .then((d: { message: { value: boolean } }) => {
           this.pauseOnPhaseTransition = d.message.value;
         })

@@ -1,5 +1,7 @@
-import Store, { Schema } from "electron-store";
 import { EventEmitter } from "events";
+import Store, { Schema } from "electron-store";
+import os from "os";
+import keytar from "keytar";
 
 const storeSchema: Schema<Record<string, unknown>> = {
   version: {
@@ -72,10 +74,16 @@ const storeSchema: Schema<Record<string, unknown>> = {
     type: "boolean",
     default: false,
   },
+  windowMode: {
+    type: "number",
+    default: 0, // 0 = always-on-top; 1 = overlay
+  },
 };
 
 class AppStore extends EventEmitter {
   public store: Store;
+  public static keytarAccount = os.userInfo().username;
+  public static keytarApiKeyService = "netscape-upload-token";
 
   constructor() {
     // Extend
@@ -95,6 +103,33 @@ class AppStore extends EventEmitter {
 
   get(setting: string) {
     return this.store.get(setting);
+  }
+
+  static async setPassword(
+    password: string,
+    service = this.keytarApiKeyService,
+    account = this.keytarAccount
+  ) {
+    try {
+      await keytar.setPassword(service, account, password);
+      return true;
+    } catch {
+      console.error("Failed to set password");
+      return false;
+    }
+  }
+
+  static async getPassword(
+    service = this.keytarApiKeyService,
+    account = this.keytarAccount
+  ) {
+    try {
+      const pw = await keytar.getPassword(service, account);
+      return pw;
+    } catch {
+      console.error("Failed to get password");
+      return undefined;
+    }
   }
 
   getAll() {

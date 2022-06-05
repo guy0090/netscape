@@ -21,8 +21,9 @@ import {
   Skill,
   SkillBreakdown,
   Stats,
-} from "./objects";
+} from "@/encounters/objects";
 import { getClassIdFromSkillId } from "@/util/skills";
+import { saveEncounter } from "@/encounters/helpers";
 
 // TODO: Time player out if they havent been updated in 10min
 export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 10;
@@ -188,6 +189,18 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
+    if (this.hasBoss(this.session.entities, false)) {
+      try {
+        const clone = cloneDeep(this.session);
+        console.log("Boss is present; Saving encounter to disk");
+        saveEncounter(clone, true).catch((err) => {
+          console.error("Failed to save encounter", err);
+        });
+      } catch (err) {
+        console.error("Failed to save encounter file:", err);
+      }
+    }
+
     this.resetTimer = setTimeout(() => {
       if (keepEntities) {
         console.log("Resetting session; Keeping valid entities");
@@ -231,12 +244,12 @@ export class PacketParser extends EventEmitter {
     return clone;
   }
 
-  hasBoss(entities: Entity[]) {
+  hasBoss(entities: Entity[], mustBeAlive = true) {
     return entities.some(
       (entity) =>
         (entity.type === ENTITY_TYPE.BOSS ||
           entity.type === ENTITY_TYPE.GUARDIAN) &&
-        entity.currentHp > 0
+        (mustBeAlive ? entity.currentHp > 0 : true)
     );
   }
 
@@ -268,7 +281,6 @@ export class PacketParser extends EventEmitter {
           this.onInitEnv(new LogInitEnv(lineSplit));
           break;
         case 2:
-          // this.onPhaseTransition(new LogPhaseTransition(lineSplit));
           this.onPhaseTransition(new LogPhaseTransition(lineSplit));
           break;
         case 3:
@@ -466,7 +478,7 @@ export class PacketParser extends EventEmitter {
       this.getEntity(packet.sourceId) ||
       this.getEntity(packet.sourceName, true);
     if (!source) {
-      console.log("Source unknown", packet.sourceName, packet.sourceId);
+      // console.log("Source unknown", packet.sourceName, packet.sourceId);
 
       const isGuardian = this.isGuardianEntity(packet.sourceName);
       const isBoss = this.isBossEntity(packet.sourceName);
@@ -521,7 +533,7 @@ export class PacketParser extends EventEmitter {
       this.getEntity(packet.targetId) ||
       this.getEntity(packet.targetName, true);
     if (!target) {
-      console.log("Target unknown", packet.targetName, packet.targetId);
+      // console.log("Target unknown", packet.targetName, packet.targetId);
 
       const isGuardian = this.isGuardianEntity(packet.targetName);
       const isBoss = this.isBossEntity(packet.targetName);
@@ -553,13 +565,13 @@ export class PacketParser extends EventEmitter {
 
     // Only process damage events if a boss is present in session
     if (!this.hasBossEntity) {
-      console.log("No boss entity found, skipping damage event");
+      // console.log("No boss entity found, skipping damage event");
       return;
     }
 
     // Don't count damage if session is paused
     if (this.session.paused) {
-      console.log("Session is paused, skipping damage event");
+      // console.log("Session is paused, skipping damage event");
       return;
     }
 
@@ -653,7 +665,8 @@ export class PacketParser extends EventEmitter {
   // logId = 11
   onCounter(packet: LogCounterAttack) {
     // console.log(`onCounter: ${JSON.stringify(packet)}`);
-    const target = this.getEntity(packet.name, true);
+    const target =
+      this.getEntity(packet.id) || this.getEntity(packet.name, true);
 
     if (target) {
       target.lastUpdate = +new Date();

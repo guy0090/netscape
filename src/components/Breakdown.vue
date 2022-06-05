@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { Entity, Skill } from "@/bridge/objects";
+import { Entity, Skill } from "@/encounters/objects";
 import { defineComponent } from "vue";
 
 // Components

@@ -45,7 +45,7 @@
 </template>
 
 <script lang="ts">
-import { Entity, ENTITY_TYPE } from "@/bridge/objects";
+import { Entity, ENTITY_TYPE } from "@/encounters/objects";
 import { defineComponent } from "vue";
 import { useStore, mapActions } from "vuex";
 import BossStatus from "./Session/BossStatus.vue";

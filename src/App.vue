@@ -58,7 +58,7 @@
         </v-col>
         <v-divider vertical class="ms-2"></v-divider>
         <v-spacer></v-spacer>
-        <v-col cols="auto" class="pe-1 ps-0 py-0 align-self-center">
+        <v-col hidden cols="auto" class="pe-1 ps-0 py-0 align-self-center">
           <v-btn
             color="blue-darken-3"
             rounded="sm"
@@ -102,7 +102,7 @@
 import { defineComponent, ref } from "vue";
 import { mapActions, useStore } from "vuex";
 import VConsole from "vconsole";
-import { Entity, ENTITY_TYPE } from "./bridge/objects";
+import { Entity, ENTITY_TYPE } from "@/encounters/objects";
 
 export default defineComponent({
   name: "App",
@@ -243,6 +243,9 @@ export default defineComponent({
             this.isPaused = false;
             break;
           case "reset-session":
+            if (this.$route.name !== "settings" && this.$route.name !== "home")
+              this.$router.push({ name: "home" });
+
             console.log("Got reset session event", message);
             this.stopSessionTimer();
 
