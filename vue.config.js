@@ -5,17 +5,17 @@ module.exports = defineConfig({
 
   pluginOptions: {
     electronBuilder: {
-      chainWebpackMainProcess: (config) => {
-        config.module
-          .rule("babel")
-          .before("ts")
-          .use("babel")
-          .loader("babel-loader")
-          .options({
-            presets: [["@babel/preset-env", { modules: false }]],
-            plugins: ["@babel/plugin-proposal-class-properties"],
-          });
-      },
+      // chainWebpackMainProcess: (config) => {
+      //   config.module
+      //     .rule("babel")
+      //     .before("ts")
+      //     .use("babel")
+      //     .loader("babel-loader")
+      //     .options({
+      //       presets: [["@babel/preset-env", { modules: "commonjs" }]],
+      //       plugins: ["@babel/plugin-proposal-class-properties"],
+      //     });
+      // },
       customFileProtocol: "./",
       builderOptions: {
         productName: "Netscape Navigator",

@@ -18,6 +18,18 @@ export default createStore({
         return "0.0.0";
       }
     },
+    openUrl(context, url) {
+      try {
+        (window as any).ipcBridge.invoke("toMain", {
+          message: "open-url",
+          url,
+        });
+        return;
+      } catch (err) {
+        console.error(err);
+        return err;
+      }
+    },
   },
   modules: { settings, sessions },
 });

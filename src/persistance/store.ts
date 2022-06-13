@@ -3,6 +3,8 @@ import Store, { Schema } from "electron-store";
 import os from "os";
 import keytar from "keytar";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 const storeSchema: Schema<Record<string, unknown>> = {
   version: {
     type: "number",
@@ -43,7 +45,7 @@ const storeSchema: Schema<Record<string, unknown>> = {
     },
     default: {
       width: 900,
-      heigth: 614,
+      height: 614,
     },
   },
   anonymizeMeter: {
@@ -78,12 +80,25 @@ const storeSchema: Schema<Record<string, unknown>> = {
     type: "number",
     default: 0, // 0 = always-on-top; 1 = overlay
   },
+  showUploadButton: {
+    type: "boolean",
+    default: true,
+  },
+  uploadLogs: {
+    type: "boolean",
+    default: false,
+  },
+  openInBrowserOnUpload: {
+    type: "boolean",
+    default: false,
+  },
 };
 
 class AppStore extends EventEmitter {
   public store: Store;
   public static keytarAccount = os.userInfo().username;
-  public static keytarApiKeyService = "netscape-upload-token";
+  public static keytarApiKeyService =
+    "netscape-upload-token" + isDevelopment ? "-dev" : "";
 
   constructor() {
     // Extend
@@ -91,7 +106,7 @@ class AppStore extends EventEmitter {
 
     // Init
     this.store = new Store({
-      name: "lost-ark-damage-meter",
+      name: "netscape-nav" + (isDevelopment ? "-dev" : ""),
       schema: storeSchema,
     });
   }
@@ -111,7 +126,9 @@ class AppStore extends EventEmitter {
     account = this.keytarAccount
   ) {
     try {
-      await keytar.setPassword(service, account, password);
+      if (password) await keytar.setPassword(service, account, password);
+      else await keytar.deletePassword(service, account);
+
       return true;
     } catch {
       console.error("Failed to set password");

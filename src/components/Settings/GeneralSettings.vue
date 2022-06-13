@@ -1,6 +1,6 @@
 <template style="height: 100">
   <v-container>
-    <v-row class="mb-2 pt-2"> <h3>General Settings</h3> </v-row>
+    <v-row class="mb-2 mt-1"> <h3>General Settings</h3> </v-row>
     <v-row class="mb-8"
       ><small>These settings modify the functionality of the app</small></v-row
     >
@@ -82,7 +82,7 @@
         <v-row class="mb-3"
           ><small
             >Toggle between removing damage that would do more than the boss has
-            remaining HP</small
+            remaining HP.</small
           ></v-row
         >
       </v-col>

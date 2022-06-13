@@ -58,12 +58,26 @@
         </v-col>
         <v-divider vertical class="ms-2"></v-divider>
         <v-spacer></v-spacer>
-        <v-col hidden cols="auto" class="pe-1 ps-0 py-0 align-self-center">
+        <v-col
+          v-if="showUploadButton"
+          cols="auto"
+          class="pe-1 ps-0 py-0 align-self-center"
+        >
           <v-btn
+            v-if="uploadLogs"
             color="blue-darken-3"
             rounded="sm"
             size="x-small"
             icon="mdi-cloud-check-outline"
+            @click="disableUploads()"
+          ></v-btn>
+          <v-btn
+            v-else
+            color="orange"
+            rounded="sm"
+            size="x-small"
+            icon="mdi-cloud-off-outline"
+            @click="enableUploads()"
           ></v-btn>
         </v-col>
         <v-col cols="auto" class="px-0 py-0 align-self-center">
@@ -102,7 +116,7 @@
 import { defineComponent, ref } from "vue";
 import { mapActions, useStore } from "vuex";
 import VConsole from "vconsole";
-import { Entity, ENTITY_TYPE } from "@/encounters/objects";
+import { Entity, ENTITY_TYPE, Session } from "@/encounters/objects";
 
 export default defineComponent({
   name: "App",
@@ -130,6 +144,7 @@ export default defineComponent({
       "pauseSession",
       "resumeSession",
       "getVersion",
+      "getApiKey",
     ]),
     resetSessionButton() {
       this.resetSession();
@@ -161,6 +176,22 @@ export default defineComponent({
         .catch((err: Error) => {
           console.error(err);
         });
+
+      this.getSetting("showUploadButton")
+        .then((d: { message: { value: boolean } }) => {
+          this.showUploadButton = d.message.value;
+        })
+        .catch((err: Error) => {
+          console.error(err);
+        });
+
+      this.getSetting("uploadLogs")
+        .then((d: { message: { value: boolean } }) => {
+          this.uploadLogs = d.message.value;
+        })
+        .catch((err: Error) => {
+          console.error(err);
+        });
     },
     listenForIpcEvents() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,24 +199,6 @@ export default defineComponent({
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { event, message } = data;
         switch (event) {
-          case "vconsole":
-            if (this.showConsoleCounter < 3) this.showConsoleCounter++;
-
-            if (!this.vConsoleTimeout) {
-              this.vConsoleTimeout = setTimeout(() => {
-                this.showConsoleCounter = 0;
-                console.log(`VConsole timeout`);
-                this.vConsoleTimeout = undefined;
-              }, 1000);
-            }
-
-            if (this.showConsoleCounter === 3) {
-              if (this.vCons) this.vCons.show();
-              this.showConsoleCounter = 0;
-
-              clearTimeout(this.vConsoleTimeout);
-            }
-            break;
           case "new-setting":
             switch (message.setting) {
               case "compactStyle":
@@ -208,13 +221,26 @@ export default defineComponent({
                 if (message.value !== this.anonymize)
                   this.anonymize = message.value;
                 break;
-            }
-
-            if (
-              message.setting === "compactStyle" &&
-              message.value !== this.compact
-            ) {
-              this.compact = message.value;
+              case "showUploadButton":
+                console.log(
+                  "Got showUploadButton change",
+                  this.showUploadButton,
+                  "=>",
+                  message.value
+                );
+                if (message.value !== this.showUploadButton)
+                  this.showUploadButton = message.value;
+                break;
+              case "uploadLogs":
+                console.log(
+                  "Got upload change",
+                  this.uploadLogs,
+                  "=>",
+                  message.value
+                );
+                if (message.value !== this.uploadLogs)
+                  this.uploadLogs = message.value;
+                break;
             }
             break;
           case "session":
@@ -272,6 +298,36 @@ export default defineComponent({
       this.updateSetting({ key: "compactStyle", value: false })
         .then(() => {
           this.compact = false;
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    },
+    enableUploads() {
+      this.getApiKey()
+        .then((d: { message: { value: string } }) => {
+          const key = d.message.value;
+
+          if (key && key.length === 32) {
+            this.updateSetting({ key: "uploadLogs", value: true })
+              .then(() => {
+                this.uploadLogs = true;
+              })
+              .catch((err) => {
+                console.error(err);
+              });
+          } else {
+            this.uploadLogs = false;
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    },
+    disableUploads() {
+      this.updateSetting({ key: "uploadLogs", value: false })
+        .then(() => {
+          this.uploadLogs = false;
         })
         .catch((err) => {
           console.error(err);
@@ -434,6 +490,8 @@ export default defineComponent({
     let store = useStore();
     let showConsoleCounter = ref(0);
     let compact = ref(false);
+    let showUploadButton = ref(false);
+    let uploadLogs = ref(false);
     let isPaused = ref(false);
     let anonymize = ref(false);
     let sessionDurationSeconds = ref(0);
@@ -442,7 +500,7 @@ export default defineComponent({
     let sessionTimer = ref();
     let sessionDps = ref("0");
     let pausedFor = ref(0);
-    let session = ref({} as any);
+    let session = ref({} as Session);
     let version = ref("0.0.1");
 
     return {
@@ -450,6 +508,8 @@ export default defineComponent({
       theme,
       store,
       compact,
+      showUploadButton,
+      uploadLogs,
       isPaused,
       anonymize,
       sessionDurationSeconds,

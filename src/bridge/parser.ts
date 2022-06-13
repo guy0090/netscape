@@ -24,10 +24,18 @@ import {
 } from "@/encounters/objects";
 import { getClassIdFromSkillId } from "@/util/skills";
 import { saveEncounter } from "@/encounters/helpers";
+import {
+  openInBrowser,
+  uploadSession,
+  validateUpload,
+} from "@/encounters/uploads";
+import { abyssRaids, guardians, raidBosses } from "@/util/supported-bosses";
+
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 // TODO: Time player out if they havent been updated in 10min
 export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 10;
-// TODO: Time bosses out if they havent been updated in 5in
+// TODO: Time bosses out if they havent been updated in 5min
 export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 5;
 // TODO: Time everything else out if they havent been updated in 1min
 export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 1;
@@ -50,6 +58,15 @@ export const tryParseInt = (intString: string, defaultValue = 0) => {
   return intNum;
 };
 
+export interface PacketParserConfig {
+  resetOnZoneChange?: boolean | undefined;
+  removeOverkillDamage?: boolean | undefined;
+  pauseOnPhaseTransition?: boolean | undefined;
+  uploadLogs?: boolean | undefined;
+  openUploadInBrowser?: boolean | undefined;
+  startSending?: boolean | undefined;
+}
+
 export class PacketParser extends EventEmitter {
   private session: Session;
   private resetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -57,30 +74,20 @@ export class PacketParser extends EventEmitter {
   private resetOnZoneChange: boolean;
   private removeOverkillDamage: boolean;
   private pauseOnPhaseTransition: boolean;
+  private uploadLogs: boolean;
+  private openUploadInBrowser: boolean;
   private hasBossEntity: boolean;
-  private numberRgx = /[0-9]/g;
 
-  // Bosses to show HP bars in meter for
-  static guardians =
-    /^(Argos|Ur'nil|Lumerus|Icy Legoros|Vertus|Chromanium|Nacrasena|Flame Fox Yoho|Tytalos|Dark Legoros|Helgaia|Calventus|Achates|Frost Helgaia|Lava Chromanium|Levanos|Alberhastic|Armored Nacrasena|Igrexion|Night Fox Yoho|Velganos|Deskaluda)[+]?$/g;
-
-  // Raid bosses
-  static bosses =
-    /(Frenzied Cicerra|Seto|Angry Moguro Captain|Albion|Demon Beast of Destruction|Demon Beast Commander Valtan|Leader Lugaru|Destroyer Lucas|Ravaged Tyrant of Beasts|Vykas)/gi;
-  // | AIRAS OCULUS        | OREHA PREVAZA             | VALTAN LEGION RAID                                                                                           | VYKAS LEGION RAID
-  constructor(
-    resetOnZoneChange = true,
-    removeOverkillDamage = true,
-    pauseOnPhaseTransition = true,
-    startSending = false
-  ) {
+  constructor(config: PacketParserConfig = {}) {
     // Extend
     super();
 
     // Config
-    this.resetOnZoneChange = resetOnZoneChange;
-    this.removeOverkillDamage = removeOverkillDamage;
-    this.pauseOnPhaseTransition = pauseOnPhaseTransition;
+    this.resetOnZoneChange = config.resetOnZoneChange || true;
+    this.removeOverkillDamage = config.removeOverkillDamage || true;
+    this.pauseOnPhaseTransition = config.pauseOnPhaseTransition || true;
+    this.uploadLogs = config.uploadLogs || false;
+    this.openUploadInBrowser = config.openUploadInBrowser || false;
     this.resetTimer = undefined;
     this.hasBossEntity = false;
 
@@ -88,11 +95,11 @@ export class PacketParser extends EventEmitter {
     this.session = new Session();
 
     // Start sending session information
-    if (startSending) this.startBroacasting(250);
+    if (config.startSending) this.startBroadcasting(250);
     else this.broadcast = undefined;
   }
 
-  startBroacasting(tickRate = 100) {
+  startBroadcasting(tickRate = 100) {
     if (!this.broadcast) {
       this.broadcast = setInterval(() => {
         this.broadcastSessionChange();
@@ -121,12 +128,12 @@ export class PacketParser extends EventEmitter {
     return this.session.entities.findIndex((entity) => entity.id === id);
   }
 
-  isBossEntity(entityName: string) {
-    return PacketParser.bosses.test(entityName);
+  isBossEntity(entityNpcId: number) {
+    return raidBosses.includes(entityNpcId);
   }
 
-  isGuardianEntity(entityName: string) {
-    return PacketParser.guardians.test(entityName);
+  isGuardianEntity(entityNpcId: number) {
+    return abyssRaids.includes(entityNpcId) || guardians.includes(entityNpcId);
   }
 
   setPauseOnPhaseTransition(pauseOnPhaseTransition: boolean) {
@@ -139,6 +146,14 @@ export class PacketParser extends EventEmitter {
 
   setRemoveOverkillDamage(removeOverkillDamage: boolean) {
     this.removeOverkillDamage = removeOverkillDamage;
+  }
+
+  setUploadLogs(uploadLogs: boolean) {
+    this.uploadLogs = uploadLogs;
+  }
+
+  setOpenUploadInBrowser(openUploadInBrowser: boolean) {
+    this.openUploadInBrowser = openUploadInBrowser;
   }
 
   resetEntities(entities: Entity[]): Entity[] {
@@ -160,16 +175,13 @@ export class PacketParser extends EventEmitter {
         return;
       }
 
-      //const isDead =
-      //  entity.currentHp <= 0 && entity.type !== ENTITY_TYPE.PLAYER;
-
-      //if (isDead) {
-      //  entity.currentHp = -1;
-      //  entity.maxHp = -1;
-      //}
-
-      // const isUndamaged = entity.currentHp === entity.maxHp;
-      // if (!isUndamaged) entity.currentHp = 0;
+      const isDead = entity.currentHp <= 0;
+      if (isDead && entity.type === ENTITY_TYPE.BOSS) {
+        console.log(
+          `Expiring dead non-guardian boss entity: ${entity.id}:${entity.name}`
+        );
+        return;
+      }
 
       entity.lastUpdate = +new Date();
       entity.stats = new Stats();
@@ -182,7 +194,7 @@ export class PacketParser extends EventEmitter {
     return reset;
   }
 
-  resetSession(keepEntities = true, timeout = 2000): void {
+  resetSession(keepEntities = true, timeout = 2000, upload = true): void {
     // console.log(`Trying to reset session | keepEntities: ${keepEntities}`);
     if (this.resetTimer) {
       // console.log("Skipping reset due to timer");
@@ -190,14 +202,26 @@ export class PacketParser extends EventEmitter {
     }
 
     if (this.hasBoss(this.session.entities, false)) {
-      try {
-        const clone = cloneDeep(this.session);
-        console.log("Boss is present; Saving encounter to disk");
-        saveEncounter(clone, true).catch((err) => {
-          console.error("Failed to save encounter", err);
-        });
-      } catch (err) {
-        console.error("Failed to save encounter file:", err);
+      const clone = cloneDeep(this.session);
+      clone.cleanEntities();
+
+      console.log("Boss is present; Saving encounter");
+      saveEncounter(clone, true, "gzip", isDevelopment).catch((err) => {
+        console.error("Failed to save encounter", err);
+      });
+
+      const isSessionValid = validateUpload(clone);
+      if (upload && isSessionValid) {
+        console.log("Uploading encounter");
+        uploadSession(clone)
+          .then((d) => {
+            const uploadedId = d.id;
+            console.log("Uploaded encounter", uploadedId);
+            if (this.openUploadInBrowser) openInBrowser(uploadedId);
+          })
+          .catch((err) => {
+            console.error("Failed to upload session", err.message);
+          });
       }
     }
 
@@ -329,9 +353,15 @@ export class PacketParser extends EventEmitter {
     console.log(
       `onInitEnv: ${JSON.stringify(packet)} | ${this.resetOnZoneChange}`
     );
-    if (this.resetOnZoneChange && !this.resetTimer) {
+
+    if (this.resetOnZoneChange) {
       console.log("Starting session reset on zone change");
-      this.resetSession(false);
+      if (this.resetTimer) {
+        clearTimeout(this.resetTimer);
+        this.resetTimer = undefined;
+      }
+
+      this.resetSession(false, 2000, this.uploadLogs);
     }
   }
 
@@ -340,19 +370,16 @@ export class PacketParser extends EventEmitter {
     // Inconsistent, will need to improve once logger is more stable
 
     const isPaused = this.session.paused;
-
     switch (packet.raidResultType) {
-      case RAID_RESULT.WIPE:
-        // End and reset on wipes
+      case RAID_RESULT.RAID_END: // TODO: Probably better to call this "RAID_RESULT" since it procs on raids ending unsuccessfully
         setTimeout(() => {
           this.session.paused = true;
           this.emit("raid-end", this.session);
+          this.resetSession(true, 2000, this.uploadLogs);
         }, 200);
-
-        this.resetSession(true, 2000);
         break;
-      case RAID_RESULT.END:
-      case RAID_RESULT.DEAD:
+      case RAID_RESULT.UNK_END:
+      case RAID_RESULT.GUARDIAN_DEAD:
         // Pause on end or reset if configured
         if (this.pauseOnPhaseTransition && !isPaused) {
           if (this.session.firstPacket === 0) {
@@ -361,17 +388,18 @@ export class PacketParser extends EventEmitter {
           }
 
           // Delay firing of event to allow for last damage packet to be processed
+          // Phase packet is sent before/simulatenously with the last damage packet
           setTimeout(() => {
             this.session.paused = true;
             this.emit("raid-end", this.session);
           }, 200);
         } else {
-          this.resetSession(true, 4000);
+          this.resetSession(true, 4000, this.uploadLogs);
         }
         break;
       default:
         // foo wtf reset anyway
-        this.resetSession(true, 4000);
+        this.resetSession(true, 4000, this.uploadLogs);
         break;
     }
   }
@@ -414,8 +442,8 @@ export class PacketParser extends EventEmitter {
   onNewNpc(packet: LogNewNpc) {
     // console.log(`onNewNpc`);
 
-    const isBoss = this.isBossEntity(packet.name);
-    const isGuardian = this.isGuardianEntity(packet.name);
+    const isBoss = this.isBossEntity(packet.npcId);
+    const isGuardian = this.isGuardianEntity(packet.npcId);
 
     if (isBoss) packet.type = ENTITY_TYPE.BOSS;
     else if (isGuardian) packet.type = ENTITY_TYPE.GUARDIAN;
@@ -424,10 +452,13 @@ export class PacketParser extends EventEmitter {
     // NPC IDs don't seem to change like player IDs, keeping this for now
     let npc = this.getEntity(packet.id);
     if (npc) {
-      // console.log(`Updating existing npc: ${packet.id}:${packet.name}`);
-      npc.id = packet.id;
+      console.log(
+        `Updating existing npc: ${packet.id}:${packet.name} -> ${packet.name}`
+      );
+      // npc.id = packet.id;
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
+      npc.name = packet.name;
     } else {
       // console.log(`Adding new npc: ${packet.id}:${packet.name}`);
       npc = new Entity(packet);
@@ -479,18 +510,10 @@ export class PacketParser extends EventEmitter {
       this.getEntity(packet.sourceName, true);
     if (!source) {
       // console.log("Source unknown", packet.sourceName, packet.sourceId);
-
-      const isGuardian = this.isGuardianEntity(packet.sourceName);
-      const isBoss = this.isBossEntity(packet.sourceName);
-
-      let sourceType = ENTITY_TYPE.UNKNOWN;
-      if (isGuardian) sourceType = ENTITY_TYPE.GUARDIAN;
-      else if (isBoss) sourceType = ENTITY_TYPE.BOSS;
-
       source = new Entity({
         id: packet.sourceId,
         name: packet.sourceName,
-        type: sourceType,
+        type: ENTITY_TYPE.UNKNOWN,
         classId: 0,
       });
 
@@ -518,14 +541,6 @@ export class PacketParser extends EventEmitter {
         });
       }
 
-      if (source.type === ENTITY_TYPE.UNKNOWN) {
-        const isGuardian = this.isGuardianEntity(packet.sourceName);
-        const isBoss = this.isBossEntity(packet.sourceName);
-
-        if (isGuardian) source.type = ENTITY_TYPE.GUARDIAN;
-        else if (isBoss) source.type = ENTITY_TYPE.BOSS;
-      }
-
       source.lastUpdate = +new Date();
     }
 
@@ -535,17 +550,10 @@ export class PacketParser extends EventEmitter {
     if (!target) {
       // console.log("Target unknown", packet.targetName, packet.targetId);
 
-      const isGuardian = this.isGuardianEntity(packet.targetName);
-      const isBoss = this.isBossEntity(packet.targetName);
-
-      let sourceType = ENTITY_TYPE.UNKNOWN;
-      if (isGuardian) sourceType = ENTITY_TYPE.GUARDIAN;
-      else if (isBoss) sourceType = ENTITY_TYPE.BOSS;
-
       target = new Entity({
         id: packet.targetId,
         name: packet.targetName,
-        type: sourceType,
+        type: ENTITY_TYPE.UNKNOWN,
         classId: 0,
         currentHp: packet.currentHp,
         maxHp: packet.maxHp,
@@ -595,7 +603,7 @@ export class PacketParser extends EventEmitter {
     // TODO: **should** remove insanely high bleed ticks or broken damage from grenades
     if (
       (packet.skillName === "Bleed" || packet.skillId === 0) &&
-      packet.damage > 1000000
+      packet.damage > 5000000
     )
       return;
 
@@ -620,16 +628,18 @@ export class PacketParser extends EventEmitter {
     activeSkill.stats.backHits += backAttackCount;
     activeSkill.stats.frontHits += frontAttackCount;
 
-    activeSkill.breakdown.push(
-      new SkillBreakdown({
-        timestamp: +new Date(),
-        damage: packet.damage,
-        isCrit: packet.isCrit,
-        isBackHit: packet.isBackAttack,
-        isFrontHit: packet.isFrontAttack,
-        targetEntity: target.id,
-      })
-    );
+    if (source.type === ENTITY_TYPE.PLAYER) {
+      activeSkill.breakdown.push(
+        new SkillBreakdown({
+          timestamp: +new Date(),
+          damage: packet.damage,
+          isCrit: packet.isCrit,
+          isBackHit: packet.isBackAttack,
+          isFrontHit: packet.isFrontAttack,
+          targetEntity: target.id,
+        })
+      );
+    }
 
     if (source.type === ENTITY_TYPE.PLAYER) {
       this.session.damageStatistics.totalDamageDealt += packet.damage;
@@ -664,7 +674,7 @@ export class PacketParser extends EventEmitter {
 
   // logId = 11
   onCounter(packet: LogCounterAttack) {
-    // console.log(`onCounter: ${JSON.stringify(packet)}`);
+    console.log(`onCounter: ${JSON.stringify(packet)}`);
     const target =
       this.getEntity(packet.id) || this.getEntity(packet.name, true);
 

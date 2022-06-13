@@ -30,9 +30,9 @@ export class LogInitEnv {
 }
 
 export enum RAID_RESULT {
-  END = 0, // Raid ended; Not sure when it procs
-  DEAD = 1, // Guardian died; Also procs on every Argos phase
-  WIPE = 2, // Non-guardian boss died; Party wiped (does not proc on guardian wipes)
+  UNK_END = 0, // Raid ended; Not sure when it procs
+  GUARDIAN_DEAD = 1, // Guardian died; Also procs on every Argos phase
+  RAID_END = 2, // Non-guardian boss died; Party wiped (does not proc on guardian wipes)
 }
 
 // logId = 2
@@ -47,16 +47,16 @@ export class LogPhaseTransition {
     console.log("PhaseLine", lineSplit);
     switch (type) {
       case 0:
-        this.raidResultType = RAID_RESULT.END;
+        this.raidResultType = RAID_RESULT.UNK_END;
         break;
       case 1:
-        this.raidResultType = RAID_RESULT.DEAD;
+        this.raidResultType = RAID_RESULT.GUARDIAN_DEAD;
         break;
       case 2:
-        this.raidResultType = RAID_RESULT.WIPE;
+        this.raidResultType = RAID_RESULT.RAID_END;
         break;
       default:
-        this.raidResultType = RAID_RESULT.END;
+        this.raidResultType = RAID_RESULT.UNK_END;
         break;
     }
   }
@@ -207,11 +207,14 @@ export class LogCounterAttack {
   timestamp: number;
   id: string;
   name: string;
+  targetId: string;
+  targetName: string;
+
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
     this.id = lineSplit[2];
     this.name = lineSplit[3] || "Unknown Entity";
-    /* this.targetId = lineSplit[4];
-    this.targetName = lineSplit[5] || "Unknown Entity"; */
+    this.targetId = lineSplit[4];
+    this.targetName = lineSplit[5] || "Unknown Entity";
   }
 }

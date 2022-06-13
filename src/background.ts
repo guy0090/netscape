@@ -16,7 +16,7 @@ import { overlayWindow } from "electron-overlay-window";
 import installExtension, { VUEJS3_DEVTOOLS } from "electron-devtools-installer";
 import { ElectronBridge } from "@/bridge/electron-bridge";
 import DamageMeterEvents from "@/ipc/damage-meter";
-import { PacketParser } from "@/bridge/parser";
+import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
 import { Session } from "./encounters/objects";
 
@@ -30,11 +30,16 @@ export const isDevelopment = process.env.NODE_ENV !== "production";
 export const gotAppLock = app.requestSingleInstanceLock();
 export const appStore = new AppStore();
 export const electronBridge = new ElectronBridge(appStore);
-export const packetParser = new PacketParser(
-  appStore.get("resetOnZoneChange") as boolean,
-  appStore.get("removeOverkillDamage") as boolean,
-  appStore.get("pauseOnPhaseTransition") as boolean
-);
+
+export const parserConfig: PacketParserConfig = {
+  resetOnZoneChange: appStore.get("resetOnZoneChange") as boolean,
+  removeOverkillDamage: appStore.get("removeOverkillDamage") as boolean,
+  pauseOnPhaseTransition: appStore.get("pauseOnPhaseTransition") as boolean,
+  uploadLogs: appStore.get("uploadLogs") as boolean,
+  openUploadInBrowser: appStore.get("openInBrowserOnUpload") as boolean,
+};
+
+export const packetParser = new PacketParser(parserConfig);
 
 export const windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow;
@@ -89,6 +94,12 @@ async function createWindow() {
         break;
       case "removeOverkillDamage":
         packetParser.setRemoveOverkillDamage(value);
+        break;
+      case "uploadLogs":
+        packetParser.setUploadLogs(value);
+        break;
+      case "openInBrowserOnUpload":
+        packetParser.setOpenUploadInBrowser(value);
         break;
       default:
         break;
@@ -257,7 +268,7 @@ app.on("ready", async () => {
   // Wait for connection to logger
   electronBridge.on("ready", () => {
     // Start processing packets
-    packetParser.startBroacasting(250);
+    packetParser.startBroadcasting(250);
     electronBridge.on("packet", (packet) => {
       packetParser.parse(packet);
     });

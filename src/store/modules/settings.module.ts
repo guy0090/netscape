@@ -62,7 +62,7 @@ export const settings: Module<any, any> = {
         return err;
       }
     },
-    async getSetting(context, setting) {
+    async getSetting(_context, setting) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const val = await (window as any).ipcBridge.invoke("toMain", {
@@ -72,6 +72,28 @@ export const settings: Module<any, any> = {
         return val;
       } catch (err) {
         console.error(err);
+        return err;
+      }
+    },
+    async getApiKey() {
+      try {
+        const val = await (window as any).ipcBridge.invoke("toMain", {
+          message: "get-api-key",
+        });
+        return val;
+      } catch (err) {
+        console.error(err);
+        return err;
+      }
+    },
+    async setApiKey(context, apiKey) {
+      try {
+        await (window as any).ipcBridge.invoke("toMain", {
+          message: "set-api-key",
+          value: apiKey,
+        });
+        return;
+      } catch (err) {
         return err;
       }
     },

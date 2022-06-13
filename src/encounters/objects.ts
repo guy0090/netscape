@@ -35,6 +35,37 @@ export class Session {
     this.entities = session?.entities || [];
     this.damageStatistics = session?.damageStatistics || new DamageStatistics();
   }
+
+  cleanEntities(
+    entityFilter: ENTITY_TYPE[] | undefined = [
+      ENTITY_TYPE.GUARDIAN,
+      ENTITY_TYPE.BOSS,
+      ENTITY_TYPE.PLAYER,
+    ]
+  ) {
+    // Filter out entities not in the filter list
+    if (entityFilter) {
+      this.entities = this.entities.filter((e) =>
+        entityFilter?.includes(e.type)
+      );
+    }
+
+    /* TODO: Decide if this is necessary
+    // If multiple bosses are logged, only keep the most recent one
+    const bosses = this.entities.filter(
+      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
+    );
+
+    if (bosses.length > 1) {
+      const filtered = bosses
+        .sort((a, b) => b.lastUpdate - a.lastUpdate)
+        .slice(1)
+        .map((e) => e.id);
+
+      this.entities = this.entities.filter((e) => !filtered.includes(e.id));
+    }
+    */
+  }
 }
 
 export class DamageStatistics {

@@ -1,63 +1,87 @@
-import axios, { AxiosRequestConfig } from "axios";
-import { Session } from "@/encounters/objects";
+import { ENTITY_TYPE, Session } from "@/encounters/objects";
 import AppStore from "@/persistance/store";
+// import AppStore from "@/persistance/store";
+import axios from "axios";
+import { shell } from "electron";
 
-const isDevelopment = process.env.NODE_ENV !== "production";
+export const UPLOAD_URL = process.env.VUE_APP_UPLOAD_URL;
+export const SITE_URL = process.env.VUE_APP_LOGS_URL;
 
-export const UPLOAD_URL = isDevelopment
-  ? "http://localhost"
-  : "https://api.dps.arsha.io";
 export const UPLOAD_ENDPOINT = "/logs/upload";
-export const RECENT_ENDPOINT = "logs/recents";
+export const RECENT_ENDPOINT = "/logs/recents";
 
 export const uploadSession = async (session: Session) => {
   try {
     const uploadKey = await AppStore.getPassword();
-    const upload = JSON.stringify({ key: uploadKey, session: session });
+    const upload = { key: uploadKey, data: session };
 
-    const uploadConfig = {
-      method: "PUT",
-      url: `${UPLOAD_URL}${UPLOAD_ENDPOINT}`,
-      responseType: "json",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": upload.length,
-      },
-      data: upload,
-    } as AxiosRequestConfig;
-
-    const response = await axios(uploadConfig);
+    const response = await axios.post(
+      `${UPLOAD_URL}${UPLOAD_ENDPOINT}`,
+      upload
+    );
     return response.data;
   } catch (err: any) {
     console.error(err.message);
-    return undefined;
+    throw err;
   }
 };
 
-export const getRecentLogs = async () => {
-  try {
-    const uploadKey = await AppStore.getPassword();
-    const request = {
-      method: "POST",
-      url: `${UPLOAD_URL}${RECENT_ENDPOINT}`,
-      data: {
-        key: uploadKey,
-        range: { begin: +new Date() - 604799000 },
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
-
-    const response = await axios(request);
-    if (response.data) {
-      const sessions = response.data as Session[];
-      return sessions.map((s: any) => new Session(s));
-    } else {
-      return [];
-    }
-  } catch (err: any) {
-    console.error(err.message);
-    return undefined;
+export const validateUpload = (session: Session) => {
+  if (session.firstPacket <= 0 || session.lastPacket <= 0) {
+    console.log("Validating upload failed: session duration is invalid");
+    return false;
   }
+
+  const entities = session.entities;
+  const bossEntities = entities.filter(
+    (entity) =>
+      entity.type === ENTITY_TYPE.BOSS || entity.type === ENTITY_TYPE.GUARDIAN
+  );
+  const playerEntities = entities.filter(
+    (entity) => entity.type === ENTITY_TYPE.PLAYER
+  );
+
+  const hasBoss = bossEntities.length > 0;
+  if (!hasBoss) {
+    console.log("Validating upload failed: no boss found");
+    return false;
+  }
+
+  const hasPlayers = playerEntities.length > 0;
+  if (!hasPlayers) {
+    console.log("Validating upload failed: no players found");
+    return false;
+  }
+
+  const allPlayersHaveSkills = playerEntities.every((e) => e.skills);
+
+  if (!allPlayersHaveSkills) {
+    console.log("Validating upload failed: one or more players have no skills");
+    return false;
+  }
+
+  const mostRecentDamaged = bossEntities.sort(
+    (a, b) => b.lastUpdate - a.lastUpdate
+  )[0];
+
+  if (mostRecentDamaged.lastUpdate + 1000 * 60 * 10 < +new Date()) {
+    console.log(
+      "Validating upload failed: boss was not damaged in last 10 minutes"
+    );
+    return false;
+  }
+
+  if (mostRecentDamaged.currentHp > 0) {
+    console.log(
+      "Validating upload failed: boss is still alive (possibly a wipe?)"
+    );
+    return false;
+  }
+
+  return true;
+};
+
+export const openInBrowser = (id: string) => {
+  const url = `${SITE_URL}/logs/${id}`;
+  shell.openExternal(url);
 };

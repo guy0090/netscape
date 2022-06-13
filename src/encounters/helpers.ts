@@ -24,14 +24,15 @@ export const encounterDirExists = async (create = false) => {
 export const saveEncounter = async (
   encounter: Session,
   compress = true,
-  compressWith = "gzip"
+  compressWith = "gzip",
+  debug = false
 ) => {
   try {
     await encounterDirExists(true);
-    const file = `${ENCOUNTER_DIR}\\${+new Date()}_${encounter.id}.enc`;
+    const file = `${ENCOUNTER_DIR}\\${+new Date()}_${encounter.id}`;
     const data = JSON.stringify(encounter);
 
-    if (compress) {
+    if (debug) {
       const now = new Date();
       const compressed =
         compressWith === "gzip"
@@ -42,9 +43,22 @@ export const saveEncounter = async (
           compressed.length
         } bytes in ${new Date().getTime() - now.getTime()}ms`
       );
-      await fs.promises.writeFile(file, compressed);
+      await fs.promises.writeFile(file + ".enc", compressed);
+      await fs.promises.writeFile(file + ".json", data);
+    } else if (compress) {
+      const now = new Date();
+      const compressed =
+        compressWith === "gzip"
+          ? await Gzip.compressString(data)
+          : await Brotli.compressString(data);
+      console.log(
+        `Compressed (${compressWith}) ${data.length} bytes to ${
+          compressed.length
+        } bytes in ${new Date().getTime() - now.getTime()}ms`
+      );
+      await fs.promises.writeFile(file + ".enc", compressed);
     } else {
-      await fs.promises.writeFile(file, data);
+      await fs.promises.writeFile(file + ".json", data);
     }
     console.log(`Saved encounter to ${file}`);
     return true;

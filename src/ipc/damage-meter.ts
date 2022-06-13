@@ -1,10 +1,10 @@
 import { packetParser } from "@/background";
-import { ipcMain, app } from "electron";
+import { ipcMain, app, shell } from "electron";
 import AppStore from "@/persistance/store";
 
 class DamageMeterEvents {
   public static initialize(appStore: AppStore): void {
-    ipcMain.handle("toMain", (event, arg) => {
+    ipcMain.handle("toMain", async (event, arg) => {
       if (!arg.message || typeof arg.message !== "string") {
         return { error: "Invalid event" };
       } else {
@@ -13,7 +13,6 @@ class DamageMeterEvents {
             appStore.set(arg.setting, arg.value);
             return { message: "set-setting" };
           case "get-setting":
-            // console.log(`Client requested setting: ${arg.setting}`);
             return {
               event: "get-setting",
               message: {
@@ -21,10 +20,24 @@ class DamageMeterEvents {
                 value: appStore.get(arg.setting),
               },
             };
+          case "set-api-key":
+            try {
+              await AppStore.setPassword(arg.value);
+              return { message: "set-api-key" };
+            } catch (err) {
+              return { message: "set-api-key", error: err };
+            }
+          case "get-api-key":
+            try {
+              const pw = await AppStore.getPassword();
+              return { event: "get-api-key", message: { value: pw } };
+            } catch (err) {
+              return { message: "get-api-key", error: err };
+            }
           case "reset-session":
             console.log("Client requested session reset");
-            if (arg.force) packetParser.resetSession(false, 0);
-            else packetParser.resetSession(true, 0);
+            if (arg.force) packetParser.resetSession(false, 0, false);
+            else packetParser.resetSession(true, 0, false);
             break;
           case "pause-session":
             console.log("Client requested session pause");
@@ -39,6 +52,9 @@ class DamageMeterEvents {
               event: "version",
               message: app.getVersion(),
             };
+          case "open-url":
+            if (arg.url) shell.openExternal(arg.url);
+            break;
           default:
             return { error: "Invalid event" };
         }
