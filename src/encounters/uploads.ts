@@ -1,3 +1,4 @@
+import log from "electron-log";
 import { ENTITY_TYPE, Session } from "@/encounters/objects";
 import AppStore from "@/persistance/store";
 // import AppStore from "@/persistance/store";
@@ -20,15 +21,15 @@ export const uploadSession = async (session: Session) => {
       upload
     );
     return response.data;
-  } catch (err: any) {
-    console.error(err.message);
+  } catch (err) {
+    log.error((err as Error).message);
     throw err;
   }
 };
 
 export const validateUpload = (session: Session) => {
   if (session.firstPacket <= 0 || session.lastPacket <= 0) {
-    console.log("Validating upload failed: session duration is invalid");
+    log.info("Validating upload failed: session duration is invalid");
     return false;
   }
 
@@ -43,20 +44,20 @@ export const validateUpload = (session: Session) => {
 
   const hasBoss = bossEntities.length > 0;
   if (!hasBoss) {
-    console.log("Validating upload failed: no boss found");
+    log.info("Validating upload failed: no boss found");
     return false;
   }
 
   const hasPlayers = playerEntities.length > 0;
   if (!hasPlayers) {
-    console.log("Validating upload failed: no players found");
+    log.info("Validating upload failed: no players found");
     return false;
   }
 
   const allPlayersHaveSkills = playerEntities.every((e) => e.skills);
 
   if (!allPlayersHaveSkills) {
-    console.log("Validating upload failed: one or more players have no skills");
+    log.info("Validating upload failed: one or more players have no skills");
     return false;
   }
 
@@ -65,14 +66,14 @@ export const validateUpload = (session: Session) => {
   )[0];
 
   if (mostRecentDamaged.lastUpdate + 1000 * 60 * 10 < +new Date()) {
-    console.log(
+    log.info(
       "Validating upload failed: boss was not damaged in last 10 minutes"
     );
     return false;
   }
 
   if (mostRecentDamaged.currentHp > 0) {
-    console.log(
+    log.info(
       "Validating upload failed: boss is still alive (possibly a wipe?)"
     );
     return false;

@@ -3,6 +3,7 @@ import { Module } from "vuex";
 /**
  * Module containing application settings.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const settings: Module<any, any> = {
   state: () => ({
     opacity: 0.9,
@@ -77,6 +78,7 @@ export const settings: Module<any, any> = {
     },
     async getApiKey() {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const val = await (window as any).ipcBridge.invoke("toMain", {
           message: "get-api-key",
         });
@@ -88,6 +90,7 @@ export const settings: Module<any, any> = {
     },
     async setApiKey(context, apiKey) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (window as any).ipcBridge.invoke("toMain", {
           message: "set-api-key",
           value: apiKey,

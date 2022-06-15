@@ -1,5 +1,6 @@
 import os from "os";
 import fs from "fs";
+import log from "electron-log";
 import { Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
 
@@ -10,8 +11,8 @@ export const encounterDirExists = async (create = false) => {
   try {
     const dir = await fs.promises.stat(ENCOUNTER_DIR);
     return dir.isDirectory();
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       if (create) {
         await fs.promises.mkdir(ENCOUNTER_DIR, { recursive: true });
         return true;
@@ -38,7 +39,7 @@ export const saveEncounter = async (
         compressWith === "gzip"
           ? await Gzip.compressString(data)
           : await Brotli.compressString(data);
-      console.log(
+      log.debug(
         `Compressed (${compressWith}) ${data.length} bytes to ${
           compressed.length
         } bytes in ${new Date().getTime() - now.getTime()}ms`
@@ -51,7 +52,7 @@ export const saveEncounter = async (
         compressWith === "gzip"
           ? await Gzip.compressString(data)
           : await Brotli.compressString(data);
-      console.log(
+      log.debug(
         `Compressed (${compressWith}) ${data.length} bytes to ${
           compressed.length
         } bytes in ${new Date().getTime() - now.getTime()}ms`
@@ -60,10 +61,10 @@ export const saveEncounter = async (
     } else {
       await fs.promises.writeFile(file + ".json", data);
     }
-    console.log(`Saved encounter to ${file}`);
+    log.info(`Saved encounter to ${file}`);
     return true;
-  } catch (err: any) {
-    console.error("Error saving encounter: " + err.message);
+  } catch (err) {
+    log.error("Error saving encounter: " + (err as Error).message);
     return false;
   }
 };
@@ -77,8 +78,8 @@ export const readEncounter = async (
     const data = await fs.promises.readFile(file);
     const uncompressed = await Gzip.decompress(data);
     return new Session(JSON.parse(uncompressed));
-  } catch (err: any) {
-    console.error("Error reading encounter: " + err.message);
+  } catch (err) {
+    log.error("Error reading encounter: " + (err as Error).message);
     return undefined;
   }
 };

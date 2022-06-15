@@ -7,8 +7,9 @@ export default createStore({
   getters: {},
   mutations: {},
   actions: {
-    async getVersion(context) {
+    async getVersion() {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const response = await (window as any).ipcBridge.invoke("toMain", {
           message: "version",
         });
@@ -18,8 +19,9 @@ export default createStore({
         return "0.0.0";
       }
     },
-    openUrl(context, url) {
+    openUrl(_context, url) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).ipcBridge.invoke("toMain", {
           message: "open-url",
           url,

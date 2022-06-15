@@ -1,5 +1,5 @@
 <template>
-  <session-page :session="session" :compact="compact" />
+  <session-page></session-page>
 </template>
 
 <script lang="ts">
@@ -10,11 +10,6 @@ import SessionPage from "../components/Session.vue";
 
 export default defineComponent({
   name: "SessionView",
-
-  props: {
-    session: Object || {},
-    compact: Boolean || false,
-  },
 
   components: {
     SessionPage,

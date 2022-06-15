@@ -12,7 +12,7 @@
       :sessionDuration="sessionDuration"
       :totalDamage="session?.damageStatistics.totalDamageDealt"
       :compact="compact"
-      :paused="isPaused"
+      :isPaused="isPaused"
       :pausedFor="pausedFor"
       @click="
         $router.push({ name: 'breakdown', params: { entityId: entity.id } })
@@ -59,9 +59,9 @@ export default defineComponent({
   },
 
   props: {
+    compact: Boolean || false,
     session: Object || {},
     sessionDuration: Number,
-    compact: Boolean || false,
     isPaused: Boolean || false,
     pausedFor: Number || 0,
   },
@@ -77,7 +77,6 @@ export default defineComponent({
   mounted() {
     this.getSetting("anonymizeMeter")
       .then((d: { message: { value: boolean } }) => {
-        // console.log(`anonymizeMeter: ${d.message.value}`);
         this.anon = d.message.value;
       })
       .catch((err: Error) => {

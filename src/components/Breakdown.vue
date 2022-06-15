@@ -5,11 +5,11 @@
       :key="skill.id"
       :skill="skill"
       :classId="getEntity()?.classId"
-      :pausedFor="pausedFor"
-      :isPaused="isPaused"
       :damageDealt="getEntity()?.stats?.damageDealt"
-      :sessionDuration="sessionDuration"
+      :isPaused="isPaused"
+      :pausedFor="pausedFor"
       :compact="compact"
+      :sessionDuration="sessionDuration"
     >
     </skill-row>
   </div>
@@ -30,11 +30,11 @@ export default defineComponent({
   },
 
   props: {
-    session: Object,
     compact: Boolean,
+    session: Object,
     sessionDuration: Number,
-    pausedFor: Number,
     isPaused: Boolean,
+    pausedFor: Number,
   },
 
   methods: {

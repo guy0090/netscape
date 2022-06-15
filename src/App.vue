@@ -27,11 +27,11 @@
     </v-system-bar>
     <v-main class="main-panel" style="padding-bottom: 37px">
       <router-view
-        :session="session"
         :compact="compact"
+        :session="session"
         :sessionDuration="sessionDurationSeconds"
-        :pausedFor="pausedFor"
         :isPaused="isPaused"
+        :pausedFor="pausedFor"
       />
     </v-main>
     <v-footer class="py-0 footer-panel">
@@ -80,7 +80,11 @@
             @click="enableUploads()"
           ></v-btn>
         </v-col>
-        <v-col cols="auto" class="px-0 py-0 align-self-center">
+        <v-col
+          v-if="session.live"
+          cols="auto"
+          class="px-0 py-0 align-self-center"
+        >
           <v-btn
             v-if="!isPaused"
             color="red-darken-3"
@@ -113,10 +117,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from "vue";
+import { defineComponent, reactive, ref } from "vue";
 import { mapActions, useStore } from "vuex";
-import VConsole from "vconsole";
-import { Entity, ENTITY_TYPE, Session } from "@/encounters/objects";
+import {
+  DamageStatistics,
+  ENTITY_TYPE,
+  SimpleEntity,
+  SimpleSession,
+} from "@/encounters/objects";
 
 export default defineComponent({
   name: "App",
@@ -148,7 +156,7 @@ export default defineComponent({
     ]),
     resetSessionButton() {
       this.resetSession();
-      this.$router.push({ name: "home" });
+      this.$router.push({ name: "session" });
     },
     applySettings() {
       let htmlFrame = document.getElementsByTagName("html")[0];
@@ -244,46 +252,67 @@ export default defineComponent({
             }
             break;
           case "session":
-            this.session = message;
+            if (!this.session.live) {
+              this.clearSession();
+              this.$router.push({ name: "session" });
+            }
+
+            this.updateSession(message);
+
             if (this.session.paused || this.isPaused) return;
             if (!this.sessionTimer && this.session.firstPacket !== 0)
               this.startSessionTimer();
             else if (this.session.firstPacket === 0 && this.sessionTimer)
               this.stopSessionTimer();
+
             break;
           case "end-session":
             console.log("Got end session");
             this.stopSessionTimer(false);
             this.isPaused = true;
+
+            if (!message.live) {
+              this.updateSession(message);
+              this.sessionDurationSeconds =
+                (message.lastPacket - message.firstPacket) / 1000;
+              this.sessionDuration = this.getSessionDuration();
+            }
             break;
           case "pause-session":
             console.log("Got pause session event");
-            this.session = message;
+            this.updateSession(message);
             if (this.isPaused) return;
             this.isPaused = true;
             break;
           case "resume-session":
             console.log("Got resume session event");
-            this.session = message;
+            this.updateSession(message);
             if (!this.isPaused) return;
             this.isPaused = false;
             break;
           case "reset-session":
-            if (this.$route.name !== "settings" && this.$route.name !== "home")
-              this.$router.push({ name: "home" });
-
-            console.log("Got reset session event", message);
-            this.stopSessionTimer();
-
-            this.session = message;
-            this.isPaused = false;
-            this.sessionDurationSeconds = 0;
-            this.sessionDuration = "00:00";
-            this.sessionDamage = "0";
-            this.pausedFor = 0;
+            console.log("FOO RESET");
             break;
         }
       });
+    },
+    updateSession(session: SimpleSession) {
+      this.session.paused = session.paused;
+      this.session.live = session.live;
+      this.session.firstPacket = session.firstPacket;
+      this.session.lastPacket = session.lastPacket;
+      this.session.entities = session.entities;
+      this.session.damageStatistics = session.damageStatistics;
+    },
+    clearSession() {
+      this.stopSessionTimer();
+
+      this.session.paused = false;
+      this.session.live = true;
+      this.session.firstPacket = 0;
+      this.session.lastPacket = 0;
+      this.session.entities = [];
+      this.session.damageStatistics = {} as DamageStatistics;
     },
     enableCompact() {
       this.updateSetting({ key: "compactStyle", value: true })
@@ -334,12 +363,14 @@ export default defineComponent({
         });
     },
     getBossEntity() {
-      let boss: Entity[];
+      let boss: SimpleEntity[];
       if (this.session && this.session?.entities) {
         boss = this.session?.entities.filter(
-          (entity: Entity) => [1, 2].includes(entity.type) && entity.maxHp > 0
+          (entity) => [1, 2].includes(entity.type) && entity.maxHp > 0
         );
-        boss = boss.sort((a: Entity, b: Entity) => a.lastUpdate - b.lastUpdate);
+        boss = boss.sort(
+          (a: SimpleEntity, b: SimpleEntity) => a.lastUpdate - b.lastUpdate
+        );
         if (boss.length > 0) return boss[0];
       }
       return undefined;
@@ -365,11 +396,11 @@ export default defineComponent({
       let durationSeconds = this.sessionDurationSeconds;
       if (durationSeconds > 0 && this.session.entities.length > 0) {
         const playerEntities = this.session.entities.filter(
-          (entity: Entity) => entity.type === ENTITY_TYPE.PLAYER
+          (entity) => entity.type === ENTITY_TYPE.PLAYER
         );
         if (playerEntities.length > 0) {
           dps =
-            playerEntities.reduce((acc: number, cur: Entity) => {
+            playerEntities.reduce((acc: number, cur) => {
               return acc + cur.stats.damageDealt;
             }, 0) / durationSeconds;
         }
@@ -377,7 +408,7 @@ export default defineComponent({
       const abbr = this.abbrNum(dps, 2);
       return abbr;
     },
-    getEntityDPS(entity: Entity) {
+    getEntityDPS(entity: SimpleEntity) {
       const damageDealt = entity.stats.damageDealt;
       let duration = this.sessionDurationSeconds;
       if (this.pausedFor && this.pausedFor > 0) duration -= this.pausedFor;
@@ -390,7 +421,7 @@ export default defineComponent({
       }
     },
     startSessionTimer() {
-      console.log("Started monitoring session", this.session);
+      console.log("Started monitoring session");
       if (this.sessionTimer) return;
 
       this.sessionTimer = setInterval(() => {
@@ -404,8 +435,6 @@ export default defineComponent({
       }, 1000);
     },
     stopSessionTimer(reset = true) {
-      if (!this.sessionTimer) return;
-
       clearInterval(this.sessionTimer);
 
       if (reset) {
@@ -413,7 +442,6 @@ export default defineComponent({
         this.isPaused = false;
         this.sessionDurationSeconds = 0;
         this.sessionDuration = "00:00";
-        this.sessionDamage = "0";
         this.sessionDps = "0";
         this.pausedFor = 0;
       }
@@ -427,12 +455,12 @@ export default defineComponent({
         return "";
       } else {
         const bossEntities = this.session?.entities?.filter(
-          (entity: Entity) => [1, 2].includes(entity.type) && entity.maxHp > 0
+          (entity) => [1, 2].includes(entity.type) && entity.maxHp > 0
         );
 
         if (bossEntities.length > 0) {
-          const mostRecentBoss: Entity = bossEntities.sort(
-            (a: Entity, b: Entity) => b.lastUpdate - a.lastUpdate
+          const mostRecentBoss = bossEntities.sort(
+            (a, b) => b.lastUpdate - a.lastUpdate
           )[0];
 
           return `| ${mostRecentBoss.name}`;
@@ -496,11 +524,17 @@ export default defineComponent({
     let anonymize = ref(false);
     let sessionDurationSeconds = ref(0);
     let sessionDuration = ref("00:00");
-    let sessionDamage = ref("0");
     let sessionTimer = ref();
     let sessionDps = ref("0");
     let pausedFor = ref(0);
-    let session = ref({} as Session);
+    let session = reactive({
+      paused: false,
+      live: false,
+      firstPacket: 0,
+      lastPacket: 0,
+      entities: [],
+      damageStatistics: {} as DamageStatistics,
+    } as SimpleSession);
     let version = ref("0.0.1");
 
     return {
@@ -514,21 +548,11 @@ export default defineComponent({
       anonymize,
       sessionDurationSeconds,
       sessionDuration,
-      sessionDamage,
       sessionTimer,
       sessionDps,
       pausedFor,
       session,
       version,
-    };
-  },
-
-  data() {
-    let vConsoleTimeout: ReturnType<typeof setTimeout> | undefined;
-    let vCons: VConsole | undefined;
-    return {
-      vConsoleTimeout,
-      vCons,
     };
   },
 });

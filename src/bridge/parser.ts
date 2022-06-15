@@ -1,3 +1,4 @@
+import log from "electron-log";
 import { getClassId, getClassName } from "../util/game-classes";
 import { cloneDeep } from "lodash";
 import { EventEmitter } from "events";
@@ -77,6 +78,7 @@ export class PacketParser extends EventEmitter {
   private uploadLogs: boolean;
   private openUploadInBrowser: boolean;
   private hasBossEntity: boolean;
+  private previousSession: Session | undefined;
 
   constructor(config: PacketParserConfig = {}) {
     // Extend
@@ -95,11 +97,11 @@ export class PacketParser extends EventEmitter {
     this.session = new Session();
 
     // Start sending session information
-    if (config.startSending) this.startBroadcasting(250);
+    if (config.startSending) this.startBroadcasting(200);
     else this.broadcast = undefined;
   }
 
-  startBroadcasting(tickRate = 100) {
+  startBroadcasting(tickRate = 200) {
     if (!this.broadcast) {
       this.broadcast = setInterval(() => {
         this.broadcastSessionChange();
@@ -171,13 +173,13 @@ export class PacketParser extends EventEmitter {
       }
 
       if (+new Date() - entity.lastUpdate > timeout) {
-        console.log(`Expiring timed out entity: ${entity.id}:${entity.name}`);
+        log.debug(`Expiring timed out entity: ${entity.id}:${entity.name}`);
         return;
       }
 
       const isDead = entity.currentHp <= 0;
       if (isDead && entity.type === ENTITY_TYPE.BOSS) {
-        console.log(
+        log.debug(
           `Expiring dead non-guardian boss entity: ${entity.id}:${entity.name}`
         );
         return;
@@ -195,9 +197,9 @@ export class PacketParser extends EventEmitter {
   }
 
   resetSession(keepEntities = true, timeout = 2000, upload = true): void {
-    // console.log(`Trying to reset session | keepEntities: ${keepEntities}`);
+    // log.info(`Trying to reset session | keepEntities: ${keepEntities}`);
     if (this.resetTimer) {
-      // console.log("Skipping reset due to timer");
+      // log.info("Skipping reset due to timer");
       return;
     }
 
@@ -205,67 +207,59 @@ export class PacketParser extends EventEmitter {
       const clone = cloneDeep(this.session);
       clone.cleanEntities();
 
-      console.log("Boss is present; Saving encounter");
+      log.info("Boss is present; Saving encounter");
       saveEncounter(clone, true, "gzip", isDevelopment).catch((err) => {
-        console.error("Failed to save encounter", err);
+        log.error("Failed to save encounter", err);
       });
 
       const isSessionValid = validateUpload(clone);
       if (upload && isSessionValid) {
-        console.log("Uploading encounter");
+        log.info("Uploading encounter");
         uploadSession(clone)
           .then((d) => {
             const uploadedId = d.id;
-            console.log("Uploaded encounter", uploadedId);
+            log.info("Uploaded encounter", uploadedId);
             if (this.openUploadInBrowser) openInBrowser(uploadedId);
           })
           .catch((err) => {
-            console.error("Failed to upload session", err.message);
+            log.error("Failed to upload session", err.message);
           });
       }
     }
 
     this.resetTimer = setTimeout(() => {
       if (keepEntities) {
-        console.log("Resetting session; Keeping valid entities");
+        log.debug("Resetting session; Keeping valid entities");
         const resetEntities = this.resetEntities(
           cloneDeep(this.session.entities)
         );
         this.session = new Session({ entities: resetEntities });
       } else {
-        console.log("Resetting session; Clearing entities");
+        log.debug("Resetting session; Clearing entities");
         this.session = new Session();
       }
 
       this.hasBossEntity = this.hasBoss(this.session.entities);
       this.resetTimer = undefined;
 
-      this.emit("reset-session", this.session);
+      this.emit("reset-session", this.session.toSimpleObject());
     }, timeout);
   }
 
+  resetPrevious() {
+    this.previousSession = undefined;
+  }
+
   pauseSession() {
-    console.log("Pausing session");
+    log.debug("Pausing session");
     this.session.paused = true;
-    this.emit("pause-session", this.session);
+    this.emit("pause-session", this.session.toSimpleObject());
   }
 
   resumeSession() {
-    console.log("Resuming session");
+    log.debug("Resuming session");
     this.session.paused = false;
-    this.emit("resume-session", this.session);
-  }
-
-  removeSkillHistory() {
-    const clone = cloneDeep(this.session);
-    clone.entities.forEach((entity) => {
-      const skills = entity.skills;
-      Object.keys(skills).forEach((skillId) => {
-        entity.skills[skillId].breakdown = [];
-      });
-    });
-
-    return clone;
+    this.emit("resume-session", this.session.toSimpleObject());
   }
 
   hasBoss(entities: Entity[], mustBeAlive = true) {
@@ -277,20 +271,37 @@ export class PacketParser extends EventEmitter {
     );
   }
 
+  getBoss() {
+    const bosses = this.session.entities.filter(
+      (entity) =>
+        entity.type === ENTITY_TYPE.BOSS || entity.type === ENTITY_TYPE.GUARDIAN
+    );
+
+    if (bosses.length > 0) {
+      return bosses.sort((a, b) => {
+        return b.lastUpdate - a.lastUpdate;
+      })[0];
+    } else {
+      return undefined;
+    }
+  }
+
   broadcastSessionChange() {
-    const smaller = this.removeSkillHistory(); // Omit skill history for a smaller session object
-    this.emit("session-change", smaller);
+    const smaller = this.session.toSimpleObject();
+    if (this.previousSession) return; // Don't send a session if the previous is being shown
+
+    this.emit("session-broadcast", smaller);
   }
 
   parse(line: string) {
     if (!line) {
-      console.log("Empty line");
+      log.warn("Empty line");
       return;
     }
 
     const lineSplit = line.trim().split(LINE_SPLIT_CHAR);
     if (lineSplit.length < 1 || !lineSplit[0]) {
-      console.log(`Invalid line: ${lineSplit}`);
+      log.warn(`Invalid line: ${lineSplit}`);
       return;
     }
     try {
@@ -339,29 +350,29 @@ export class PacketParser extends EventEmitter {
       if (!this.session.paused) this.session.lastPacket = timestamp;
       // this.broadcastSessionChange();
     } catch (err) {
-      console.error(`Failed to parse log line: ${(err as Error).message}`);
+      log.error(`Failed to parse log line: ${(err as Error).message}`);
     }
   }
 
   // logId = 0
   onMessage(packet: LogMessage): void {
-    console.log(`Received message: ${packet.message}`);
+    log.info(`Received message: ${packet.message}`);
   }
 
   // logId = 1 | On: Most loading screens
   onInitEnv(packet: LogInitEnv) {
-    console.log(
+    log.debug(
       `onInitEnv: ${JSON.stringify(packet)} | ${this.resetOnZoneChange}`
     );
 
     if (this.resetOnZoneChange) {
-      console.log("Starting session reset on zone change");
+      log.debug("Starting session reset on zone change");
       if (this.resetTimer) {
         clearTimeout(this.resetTimer);
         this.resetTimer = undefined;
       }
 
-      this.resetSession(false, 2000, this.uploadLogs);
+      this.resetSession(false, 100, this.uploadLogs);
     }
   }
 
@@ -374,8 +385,13 @@ export class PacketParser extends EventEmitter {
       case RAID_RESULT.RAID_END: // TODO: Probably better to call this "RAID_RESULT" since it procs on raids ending unsuccessfully
         setTimeout(() => {
           this.session.paused = true;
-          this.emit("raid-end", this.session);
-          this.resetSession(true, 2000, this.uploadLogs);
+
+          // Set the previous session to keep in window until a new one begins
+          this.previousSession = cloneDeep(this.session);
+          this.previousSession.live = false;
+
+          this.emit("raid-end", this.previousSession);
+          this.resetSession(true, 100, this.uploadLogs);
         }, 200);
         break;
       case RAID_RESULT.UNK_END:
@@ -383,7 +399,7 @@ export class PacketParser extends EventEmitter {
         // Pause on end or reset if configured
         if (this.pauseOnPhaseTransition && !isPaused) {
           if (this.session.firstPacket === 0) {
-            console.log("Encounter hasn't started; Skipping pause");
+            log.debug("Encounter hasn't started; Skipping pause");
             return;
           }
 
@@ -391,25 +407,29 @@ export class PacketParser extends EventEmitter {
           // Phase packet is sent before/simulatenously with the last damage packet
           setTimeout(() => {
             this.session.paused = true;
-            this.emit("raid-end", this.session);
+
+            // Set the previous session to keep in window until a new one begins
+            this.previousSession = cloneDeep(this.session);
+            this.previousSession.live = false;
+            this.emit("raid-end", this.previousSession);
+
+            this.resetSession(false, 100, this.uploadLogs);
           }, 200);
         } else {
-          this.resetSession(true, 4000, this.uploadLogs);
+          this.resetSession(true, 100, this.uploadLogs);
         }
         break;
       default:
         // foo wtf reset anyway
-        this.resetSession(true, 4000, this.uploadLogs);
+        this.resetSession(true, 100, this.uploadLogs);
         break;
     }
   }
 
   // logId = 3 | On: A new player character is found (can be the user if the meter was started after a loading screen)
   onNewPc(packet: LogNewPc) {
-    // console.log(`onNewPc`);
-
     if (packet.id === packet.name) {
-      console.log(
+      log.debug(
         `New PC identifier (${packet.id}) and name (${packet.name}) are equal, skipping`
       );
       return;
@@ -419,7 +439,7 @@ export class PacketParser extends EventEmitter {
     // Sometimes player ID will change randomly during run, this is the fallback
     let user = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (!user) {
-      console.log(`Adding new user: ${packet.id}:${packet.name}`);
+      log.debug(`Adding new PC: ${packet.id}:${packet.name}`);
       user = new Entity(packet);
       if (user.classId === 0 && user.class !== "Unknown Class") {
         user.classId = getClassId(user.class);
@@ -428,8 +448,9 @@ export class PacketParser extends EventEmitter {
 
       this.session.entities.push(user);
     } else {
-      console.log(`Updating existing user ${packet.id}:${packet.name}`);
+      log.debug(`Updating existing PC ${packet.id}:${packet.name}`);
       user.currentHp = packet.currentHp;
+      user.type = ENTITY_TYPE.PLAYER;
       user.maxHp = packet.maxHp;
       user.id = packet.id;
       user.lastUpdate = +new Date();
@@ -440,8 +461,6 @@ export class PacketParser extends EventEmitter {
 
   // logId = 4 | On: A new non-player character is found
   onNewNpc(packet: LogNewNpc) {
-    // console.log(`onNewNpc`);
-
     const isBoss = this.isBossEntity(packet.npcId);
     const isGuardian = this.isGuardianEntity(packet.npcId);
 
@@ -452,15 +471,11 @@ export class PacketParser extends EventEmitter {
     // NPC IDs don't seem to change like player IDs, keeping this for now
     let npc = this.getEntity(packet.id);
     if (npc) {
-      console.log(
-        `Updating existing npc: ${packet.id}:${packet.name} -> ${packet.name}`
-      );
       // npc.id = packet.id;
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
       npc.name = packet.name;
     } else {
-      // console.log(`Adding new npc: ${packet.id}:${packet.name}`);
       npc = new Entity(packet);
       this.session.entities.push(npc);
     }
@@ -482,7 +497,6 @@ export class PacketParser extends EventEmitter {
       } else {
         const entityIndex = this.getEntityIndex(packet.id);
         this.session.entities.splice(entityIndex, 1);
-        // console.log(`Entity ${packet.id}:${packet.name} died; Removing`);
       }
     }
   }
@@ -500,7 +514,7 @@ export class PacketParser extends EventEmitter {
   // logId = 8 | On: Any damage event
   onDamage(packet: LogDamage) {
     if (Object.keys(packet).length < 16) {
-      console.log(`onDamage is too short: ${JSON.stringify(packet)}`);
+      log.warn(`onDamage is too short: ${JSON.stringify(packet)}`);
       return;
     }
 
@@ -509,7 +523,6 @@ export class PacketParser extends EventEmitter {
       this.getEntity(packet.sourceId) ||
       this.getEntity(packet.sourceName, true);
     if (!source) {
-      // console.log("Source unknown", packet.sourceName, packet.sourceId);
       source = new Entity({
         id: packet.sourceId,
         name: packet.sourceName,
@@ -521,7 +534,6 @@ export class PacketParser extends EventEmitter {
         this.session.entities.push(source);
       }
     } else {
-      // console.log("Source known", source.name, source.id, source.type);
       const entitySkills = Object.values(source.skills);
       if (source.classId === 0 && entitySkills.length > 0) {
         entitySkills.every((skill) => {
@@ -530,7 +542,7 @@ export class PacketParser extends EventEmitter {
             (source as Entity).classId = classId;
             (source as Entity).class = getClassName(classId);
             (source as Entity).type = ENTITY_TYPE.PLAYER;
-            console.log(
+            log.debug(
               `Unknown entity ${(source as Entity).id} was detected as class: ${
                 (source as Entity).class
               }`
@@ -548,8 +560,6 @@ export class PacketParser extends EventEmitter {
       this.getEntity(packet.targetId) ||
       this.getEntity(packet.targetName, true);
     if (!target) {
-      // console.log("Target unknown", packet.targetName, packet.targetId);
-
       target = new Entity({
         id: packet.targetId,
         name: packet.targetName,
@@ -564,7 +574,6 @@ export class PacketParser extends EventEmitter {
         this.hasBossEntity = this.hasBoss(this.session.entities);
       }
     } else {
-      // console.log("Target known", target.name, target.id, target.type);
       target.id = packet.targetId;
       target.currentHp = packet.currentHp;
       target.maxHp = packet.maxHp;
@@ -573,13 +582,13 @@ export class PacketParser extends EventEmitter {
 
     // Only process damage events if a boss is present in session
     if (!this.hasBossEntity) {
-      // console.log("No boss entity found, skipping damage event");
+      // log.debug("No boss entity found, skipping damage event");
       return;
     }
 
     // Don't count damage if session is paused
     if (this.session.paused) {
-      // console.log("Session is paused, skipping damage event");
+      // log.debug("Session is paused, skipping damage event");
       return;
     }
 
@@ -657,13 +666,14 @@ export class PacketParser extends EventEmitter {
       );
     }
 
-    if (this.session.firstPacket === 0)
+    if (this.session.firstPacket === 0) {
       this.session.firstPacket = packet.timestamp;
+      this.previousSession = undefined;
+    }
   }
 
   // logId = 9
   onHeal(packet: LogHeal) {
-    // console.log(`onHeal: ${JSON.stringify(packet)}`);
     const target = this.getEntity(packet.name, true);
 
     if (target) {
@@ -674,7 +684,7 @@ export class PacketParser extends EventEmitter {
 
   // logId = 11
   onCounter(packet: LogCounterAttack) {
-    console.log(`onCounter: ${JSON.stringify(packet)}`);
+    log.debug(`onCounter: ${JSON.stringify(packet)}`);
     const target =
       this.getEntity(packet.id) || this.getEntity(packet.name, true);
 

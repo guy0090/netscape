@@ -1,5 +1,5 @@
 <template>
-  <breakdown-page :session="session" :compact="compact"></breakdown-page>
+  <breakdown-page></breakdown-page>
 </template>
 
 <script lang="ts">
@@ -9,10 +9,7 @@ import BreakdownPage from "@/components/Breakdown.vue";
 
 export default defineComponent({
   name: "BreakdownView",
-  props: {
-    session: Object || {},
-    compact: Boolean || false,
-  },
+
   components: {
     BreakdownPage,
   },

@@ -111,7 +111,7 @@ class AppStore extends EventEmitter {
     });
   }
 
-  set(setting: string, value: any) {
+  set(setting: string, value: unknown) {
     this.store.set(setting, value);
     this.emit("change", { setting, value });
   }

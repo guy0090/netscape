@@ -1,3 +1,4 @@
+import log from "electron-log";
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { tryParseInt } from "./parser";
 import { ENTITY_TYPE } from "../encounters/objects";
@@ -44,7 +45,7 @@ export class LogPhaseTransition {
     this.timestamp = +new Date(lineSplit[1]);
     const type = tryParseInt(lineSplit[2]);
 
-    console.log("PhaseLine", lineSplit);
+    log.debug("PhaseLine", lineSplit);
     switch (type) {
       case 0:
         this.raidResultType = RAID_RESULT.UNK_END;

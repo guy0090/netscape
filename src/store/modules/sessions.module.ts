@@ -3,6 +3,7 @@ import { Module } from "vuex";
 /**
  * Module containing session actions.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const sessions: Module<any, any> = {
   actions: {
     async resetSession(context, force) {

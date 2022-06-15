@@ -1,5 +1,6 @@
 import AppStore from "@/persistance/store";
 import { Connection, ConnectionBuilder } from "electron-cgi";
+import log from "electron-log";
 import { EventEmitter } from "events";
 import path from "path";
 
@@ -13,7 +14,7 @@ export class ElectronBridge extends EventEmitter {
     // Extend
     super();
 
-    console.log("Starting logger connection");
+    log.info("Starting logger connection");
 
     this.connectionTimeout = setTimeout(() => {
       this.emit("disconnected");
@@ -45,7 +46,7 @@ export class ElectronBridge extends EventEmitter {
     }
 
     this.connection?.on("ready", () => {
-      console.log("Logger connection ready");
+      log.info("Logger connection ready");
 
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = undefined;
@@ -57,7 +58,7 @@ export class ElectronBridge extends EventEmitter {
       };
 
       this.connection?.on("message", (message) => {
-        console.log("Logger -> Main:", message);
+        log.info("Logger -> Main:", message);
       });
 
       this.connection?.on("packet", (packet) => {

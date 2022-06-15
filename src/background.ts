@@ -1,6 +1,7 @@
 "use strict";
 
 import path from "path";
+import log from "electron-log";
 import {
   app,
   dialog,
@@ -13,7 +14,6 @@ import {
 import { autoUpdater } from "electron-updater";
 import { overlayWindow } from "electron-overlay-window";
 // import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
-import installExtension, { VUEJS3_DEVTOOLS } from "electron-devtools-installer";
 import { ElectronBridge } from "@/bridge/electron-bridge";
 import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser, PacketParserConfig } from "@/bridge/parser";
@@ -65,10 +65,7 @@ function setupTray() {
     {
       label: "Quit",
       click() {
-        packetParser.stopBroadcasting();
-        setTimeout(() => {
-          app.quit();
-        }, 100);
+        app.quit();
       },
     },
   ]);
@@ -112,6 +109,7 @@ async function createWindow() {
       });
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let extraParams: any = overlayWindow.WINDOW_OPTS;
   if (windowMode === 0) {
     extraParams = {
@@ -158,14 +156,14 @@ async function createWindow() {
   }
 
   win.on("resized", () => {
-    console.log("resized", win.getBounds());
+    log.debug("resized", win.getBounds());
     const { width, height, x, y } = win.getBounds();
     appStore.set("meterDimensions", { width, height });
     appStore.set("meterPosition", { x, y });
   });
 
   win.on("moved", () => {
-    console.log("moved", win.getBounds());
+    log.debug("moved", win.getBounds());
     const { width, height, x, y } = win.getBounds();
     appStore.set("meterDimensions", { width, height });
     appStore.set("meterPosition", { x, y });
@@ -176,13 +174,27 @@ async function createWindow() {
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string);
     if (!process.env.IS_TEST)
       win.webContents.openDevTools({ mode: "detach", activate: false });
-    autoUpdater.checkForUpdatesAndNotify();
   } else {
     // createProtocol("app");
     // Load the index.html when not in development
     // win.loadURL("app://./index.html");
     win.loadURL(`file://${__dirname}/index.html`);
     // win.webContents.openDevTools({ mode: "detach", activate: false });
+    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName) => {
+      const dialogOpts = {
+        type: "info",
+        buttons: ["Restart", "Later"],
+        title: "Application Update",
+        message: process.platform === "win32" ? releaseNotes : releaseName,
+        detail:
+          "A new version has been downloaded. Restart the application to apply the updates.",
+      };
+
+      dialog.showMessageBox(dialogOpts).then((returnValue) => {
+        if (returnValue.response === 0) autoUpdater.quitAndInstall();
+      });
+    });
+
     autoUpdater.checkForUpdatesAndNotify();
   }
 }
@@ -200,7 +212,7 @@ function initOverlay() {
 
   overlayWindow.on("attach", () => {
     attached = true;
-    console.log(`Overlay attached`);
+    log.info(`Overlay attached`);
     overlayWindow.emit("moveresize", { x, y, width, height });
   });
 }
@@ -246,29 +258,24 @@ app.on("activate", () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", async () => {
-  if (isDevelopment && !process.env.IS_TEST) {
-    // Install Vue Devtools
-    try {
-      await installExtension(VUEJS3_DEVTOOLS);
-    } catch (e: unknown) {
-      console.error("Vue Devtools failed to install:", (e as Error).toString());
-    }
-  }
-
   if (!gotAppLock) {
     dialog.showErrorBox(
       "Error Starting",
       "Could not start app due to a second instance being present. Close all other instances before attempting to start."
     );
-    packetParser.stopBroadcasting();
-    electronBridge.closeConnection();
+    try {
+      packetParser.stopBroadcasting();
+      electronBridge.closeConnection();
+    } catch (err) {
+      log.error(`Error closing connection: ${err}`);
+    }
     app.quit();
   }
 
   // Wait for connection to logger
   electronBridge.on("ready", () => {
     // Start processing packets
-    packetParser.startBroadcasting(250);
+    packetParser.startBroadcasting(200);
     electronBridge.on("packet", (packet) => {
       packetParser.parse(packet);
     });
@@ -280,9 +287,12 @@ app.on("ready", async () => {
     createWindow();
 
     // Start packet parser events
-    packetParser.on("session-change", (data: Session) => {
+    packetParser.on("session-broadcast", (data: Session) => {
       if (win)
-        win.webContents.send("fromMain", { event: "session", message: data });
+        win.webContents.send("fromMain", {
+          event: "session",
+          message: data,
+        });
     });
 
     packetParser.on("raid-end", (data) => {
@@ -326,14 +336,16 @@ app.on("ready", async () => {
   });
 
   electronBridge.on("disconnected", () => {
-    dialog.showErrorBox(
-      "Error",
-      "Disconnected from logger process exiting app."
-    );
-
-    packetParser.stopBroadcasting();
-    electronBridge.closeConnection();
-    app.quit();
+    try {
+      packetParser.stopBroadcasting();
+      electronBridge.closeConnection();
+    } catch (err) {
+      dialog.showErrorBox(
+        "Error",
+        "Disconnected from logger process; Exiting app."
+      );
+    }
+    app.exit();
   });
 });
 

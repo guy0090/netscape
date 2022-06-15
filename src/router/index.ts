@@ -1,13 +1,13 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from "vue-router";
-import HomeView from "@/views/SessionView.vue";
+import SessionView from "@/views/SessionView.vue";
 import BreakdownPage from "@/views/BreakdownView.vue";
 import SettingsPage from "@/views/SettingsView.vue";
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    name: "home",
-    component: HomeView,
+    name: "session",
+    component: SessionView,
   },
   {
     path: "/breakdown/:entityId",

@@ -11,7 +11,7 @@ export enum ENTITY_TYPE {
 export class Session {
   public id: string;
   public paused: boolean;
-  public local: boolean;
+  public live: boolean;
   public firstPacket: number;
   public lastPacket: number;
   public entities: Entity[];
@@ -20,7 +20,7 @@ export class Session {
   constructor(session?: {
     id?: string;
     paused?: boolean;
-    local?: boolean;
+    live?: boolean;
     firstPacket?: number;
     lastPacket?: number;
     duration?: number;
@@ -29,7 +29,7 @@ export class Session {
   }) {
     this.id = session?.id || uuidv4();
     this.paused = session?.paused || false;
-    this.local = session?.local || true;
+    this.live = session?.live || true;
     this.firstPacket = session?.firstPacket || 0;
     this.lastPacket = session?.lastPacket || 0;
     this.entities = session?.entities || [];
@@ -66,6 +66,19 @@ export class Session {
     }
     */
   }
+
+  getDps() {
+    const duration = (this.lastPacket - this.firstPacket) / 1000;
+    const damage = this.entities.reduce(
+      (acc, e) => acc + e.stats.damageDealt,
+      0
+    );
+    return damage / duration;
+  }
+
+  toSimpleObject() {
+    return new SimpleSession(this);
+  }
 }
 
 export class DamageStatistics {
@@ -99,7 +112,7 @@ export class Entity {
   public gearLevel: number;
   public currentHp: number;
   public maxHp: number;
-  public skills: Record<string, Skill>;
+  public skills: { [key: string]: Skill };
   public stats: Stats;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,7 +148,7 @@ export class Stats {
   public damageTaken: number;
   public deaths: number;
 
-  constructor(stats?: Record<string, number>) {
+  constructor(stats?: { [key: string]: number }) {
     this.hits = stats?.hits || 0;
     this.crits = stats?.crits || 0;
     this.backHits = stats?.backHits || 0;
@@ -224,5 +237,65 @@ export class SkillStats {
     this.counters = stats?.counters || 0;
     this.damageDealt = stats?.damageDealt || 0;
     this.topDamage = stats?.topDamage || 0;
+  }
+}
+
+export class SimpleSession {
+  public paused: boolean;
+  public live: boolean;
+  public firstPacket: number;
+  public lastPacket: number;
+  public entities: SimpleEntity[];
+  public damageStatistics: DamageStatistics;
+
+  constructor(session: Session) {
+    this.paused = session.paused || false;
+    this.live = session.live || false;
+    this.firstPacket = session.firstPacket || 0;
+    this.lastPacket = session.lastPacket || 0;
+    this.entities = session.entities.map((entity) => new SimpleEntity(entity));
+    this.damageStatistics = session.damageStatistics;
+  }
+}
+
+export class SimpleEntity {
+  public lastUpdate: number;
+  public id: string;
+  public npcId?: string;
+  public name: string;
+  public type: ENTITY_TYPE;
+  public classId: number;
+  public gearLevel: number;
+  public currentHp: number;
+  public maxHp: number;
+  public skills: SimpleSkill[];
+  public stats: Stats;
+
+  constructor(entity: Entity) {
+    this.lastUpdate = entity.lastUpdate;
+    this.id = entity.id;
+    this.npcId = entity.npcId;
+    this.name = entity.name;
+    this.type = entity.type;
+    this.classId = entity.classId;
+    this.gearLevel = entity.gearLevel;
+    this.currentHp = entity.currentHp;
+    this.maxHp = entity.maxHp;
+    this.skills = Object.values(entity.skills).map(
+      (skill) => new SimpleSkill(skill)
+    );
+    this.stats = entity.stats;
+  }
+}
+
+export class SimpleSkill {
+  public id: number;
+  public name: string;
+  public stats: SkillStats;
+
+  constructor(skill: Skill) {
+    this.id = skill.id;
+    this.name = skill.name;
+    this.stats = skill.stats;
   }
 }

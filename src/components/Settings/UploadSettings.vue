@@ -177,6 +177,7 @@ export default defineComponent({
         });
     },
     listenForChanges() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).ipcBridge.receive("fromMain", (data: any) => {
         const { event, message } = data;
         if (event === "new-setting") {
