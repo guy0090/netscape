@@ -339,13 +339,14 @@ app.on("ready", async () => {
     try {
       packetParser.stopBroadcasting();
       electronBridge.closeConnection();
+      app.quit();
     } catch (err) {
       dialog.showErrorBox(
         "Error",
         "Disconnected from logger process; Exiting app."
       );
+      app.exit();
     }
-    app.exit();
   });
 });
 
