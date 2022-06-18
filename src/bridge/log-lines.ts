@@ -1,6 +1,6 @@
 import log from "electron-log";
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { tryParseInt } from "./parser";
+import { tryParseFloat, tryParseInt } from "./parser";
 import { ENTITY_TYPE } from "../encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
@@ -20,13 +20,13 @@ export class LogInitEnv {
   timestamp: number;
   playerId: string;
   playerName: string;
-  playerGearLevel: string;
+  playerGearLevel: number;
 
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
     this.playerId = lineSplit[2];
     this.playerName = lineSplit[3];
-    this.playerGearLevel = lineSplit[4];
+    this.playerGearLevel = tryParseFloat(lineSplit[4]);
   }
 }
 
@@ -71,7 +71,7 @@ export class LogNewPc {
   classId: number;
   class: string;
   level: number;
-  gearLevel: string;
+  gearLevel: number;
   currentHp: number;
   maxHp: number;
   type: ENTITY_TYPE;
@@ -83,7 +83,7 @@ export class LogNewPc {
     this.classId = tryParseInt(lineSplit[4]);
     this.class = lineSplit[5] || "Unknown Class";
     this.level = tryParseInt(lineSplit[6]);
-    this.gearLevel = lineSplit[7];
+    this.gearLevel = tryParseFloat(lineSplit[7]);
     this.currentHp = tryParseInt(lineSplit[8]);
     this.maxHp = tryParseInt(lineSplit[9]);
     this.type = ENTITY_TYPE.PLAYER;

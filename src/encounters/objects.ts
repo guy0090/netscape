@@ -265,7 +265,7 @@ export class SimpleEntity {
   public name: string;
   public type: ENTITY_TYPE;
   public classId: number;
-  public gearLevel: number;
+  public gearLevel: string;
   public currentHp: number;
   public maxHp: number;
   public skills: SimpleSkill[];
@@ -278,7 +278,7 @@ export class SimpleEntity {
     this.name = entity.name;
     this.type = entity.type;
     this.classId = entity.classId;
-    this.gearLevel = entity.gearLevel;
+    this.gearLevel = entity.gearLevel.toFixed(2).replaceAll(".", ",");
     this.currentHp = entity.currentHp;
     this.maxHp = entity.maxHp;
     this.skills = Object.values(entity.skills).map(

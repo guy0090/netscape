@@ -26,8 +26,9 @@
                   padding-right: 7px !important;
                 "
                 v-if="entity?.gearLevel != 0"
-                >{{ entity?.gearLevel }}</small
               >
+                {{ entity?.gearLevel }}
+              </small>
               <small v-else>&nbsp;</small>
             </v-col>
             <v-spacer></v-spacer>

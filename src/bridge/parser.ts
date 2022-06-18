@@ -42,15 +42,23 @@ export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 5;
 export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 1;
 
 export const tryParseInt = (intString: string, defaultValue = 0) => {
-  if (typeof intString === "number") {
-    if (isNaN(intString)) return defaultValue;
-    return intString;
-  }
-
   let intNum;
 
   try {
     intNum = parseInt(intString);
+    if (isNaN(intNum)) intNum = defaultValue;
+  } catch {
+    intNum = defaultValue;
+  }
+
+  return intNum;
+};
+
+export const tryParseFloat = (intString: string, defaultValue = 0) => {
+  let intNum;
+
+  try {
+    intNum = parseFloat(intString.replaceAll(",", "."));
     if (isNaN(intNum)) intNum = defaultValue;
   } catch {
     intNum = defaultValue;
@@ -160,7 +168,7 @@ export class PacketParser extends EventEmitter {
 
   resetEntities(entities: Entity[]): Entity[] {
     const reset: Entity[] = [];
-    entities.forEach((entity) => {
+    for (const entity of entities) {
       let timeout = DEFAULT_ENTITY_TIMEOUT;
       switch (entity.type) {
         case ENTITY_TYPE.PLAYER:
@@ -174,7 +182,7 @@ export class PacketParser extends EventEmitter {
 
       if (+new Date() - entity.lastUpdate > timeout) {
         log.debug(`Expiring timed out entity: ${entity.id}:${entity.name}`);
-        return;
+        continue;
       }
 
       const isDead = entity.currentHp <= 0;
@@ -182,7 +190,7 @@ export class PacketParser extends EventEmitter {
         log.debug(
           `Expiring dead non-guardian boss entity: ${entity.id}:${entity.name}`
         );
-        return;
+        continue;
       }
 
       entity.lastUpdate = +new Date();
@@ -190,7 +198,7 @@ export class PacketParser extends EventEmitter {
       entity.skills = {};
 
       reset.push(entity);
-    });
+    }
 
     this.hasBossEntity = this.hasBoss(reset);
     return reset;
@@ -686,7 +694,8 @@ export class PacketParser extends EventEmitter {
   onCounter(packet: LogCounterAttack) {
     log.debug(`onCounter: ${JSON.stringify(packet)}`);
     const target =
-      this.getEntity(packet.id) || this.getEntity(packet.name, true);
+      this.getEntity(packet.targetId) ||
+      this.getEntity(packet.targetName, true);
 
     if (target) {
       target.lastUpdate = +new Date();
