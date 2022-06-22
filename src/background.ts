@@ -55,14 +55,6 @@ function setupTray() {
 
   const menu = Menu.buildFromTemplate([
     {
-      visible: windowMode === 1,
-      label: "Reattach Overlay",
-      click() {
-        if (!attached)
-          overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.2.1");
-      },
-    },
-    {
       label: "Quit",
       click() {
         app.quit();
@@ -76,10 +68,6 @@ function setupTray() {
 
 async function createWindow() {
   setupTray();
-
-  globalShortcut.register("Ctrl + Alt + C", () => {
-    win.webContents.send("fromMain", { event: "vconsole", message: "" });
-  });
 
   appStore.on("change", ({ setting, value }) => {
     switch (setting) {
@@ -113,7 +101,7 @@ async function createWindow() {
   let extraParams: any = overlayWindow.WINDOW_OPTS;
   if (windowMode === 0) {
     extraParams = {
-      skipTaskbar: true,
+      skipTaskbar: false,
       frame: false,
       show: true,
       transparent: true,
@@ -130,7 +118,7 @@ async function createWindow() {
   win = new BrowserWindow({
     maxWidth: 900,
     maxHeight: 900,
-    minHeight: 160,
+    minHeight: 160, // 61 is actual min content height
     minWidth: 346,
     x,
     y,
@@ -158,15 +146,23 @@ async function createWindow() {
   win.on("resized", () => {
     log.debug("resized", win.getBounds());
     const { width, height, x, y } = win.getBounds();
-    appStore.set("meterDimensions", { width, height });
-    appStore.set("meterPosition", { x, y });
+
+    // Don't change dimension settings on minify
+    if (height > 61) {
+      appStore.set("meterDimensions", { width, height });
+      appStore.set("meterPosition", { x, y });
+    }
   });
 
   win.on("moved", () => {
     log.debug("moved", win.getBounds());
     const { width, height, x, y } = win.getBounds();
-    appStore.set("meterDimensions", { width, height });
-    appStore.set("meterPosition", { x, y });
+
+    // Don't change dimension settings on minify
+    if (height > 61) {
+      appStore.set("meterDimensions", { width, height });
+      appStore.set("meterPosition", { x, y });
+    }
   });
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -208,7 +204,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.2.1");
+  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.4.1");
 
   overlayWindow.on("attach", () => {
     attached = true;
@@ -328,6 +324,7 @@ app.on("ready", async () => {
     });
 
     if (windowMode === 1) {
+      console.log("Attaching overlay");
       // Attach overlay delayed
       setTimeout(() => {
         initOverlay();

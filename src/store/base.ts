@@ -1,5 +1,6 @@
 import { settings } from "./modules/settings.module";
 import { sessions } from "./modules/sessions.module";
+import { util } from "./modules/util.module";
 
 import { createStore } from "vuex";
 
@@ -33,5 +34,5 @@ export default createStore({
       }
     },
   },
-  modules: { settings, sessions },
+  modules: { settings, sessions, util },
 });

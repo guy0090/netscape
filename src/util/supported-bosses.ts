@@ -1,12 +1,8 @@
 export const abyssRaids = [
   // Argos - Dont know what phase is which
-  634000,
-  634006, // Phases (probably?)
-  634007, // Phases (probably?)
-  634010, // Phases (probably?)
-  634020,
-  634021,
-  634027,
+  634000, // P1?
+  634010, // P2?
+  634020, // P3?
 ];
 
 export const raidBosses = [

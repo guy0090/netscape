@@ -14,6 +14,23 @@ export const RECENT_ENDPOINT = "/logs/recents";
 export const uploadSession = async (session: Session) => {
   try {
     const uploadKey = await AppStore.getPassword();
+
+    // If multiple bosses are logged, only keep the most recent one
+    const bosses = session.entities.filter(
+      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
+    );
+
+    if (bosses.length > 1) {
+      const filtered = bosses
+        .sort((a, b) => b.lastUpdate - a.lastUpdate)
+        .slice(1)
+        .map((e) => e.id);
+
+      session.entities = session.entities.filter(
+        (e) => !filtered.includes(e.id)
+      );
+    }
+
     const upload = { key: uploadKey, data: session };
 
     const response = await axios.post(

@@ -4,7 +4,7 @@
     <v-row class="mb-8"
       ><small>These settings modify the functionality of the app</small></v-row
     >
-    <v-row>
+    <v-row hidden>
       <v-col cols="auto" class="pb-0">
         <v-row class="mb-2"
           ><v-icon icon="mdi-pause"></v-icon>&nbsp;Pause on Fight End
@@ -28,7 +28,7 @@
         ></v-switch>
       </v-col>
     </v-row>
-    <v-row class="mt-5">
+    <v-row hidden class="mt-5">
       <v-col cols="auto" class="pb-0">
         <v-row class="mb-2"
           ><v-icon icon="mdi-refresh"></v-icon>&nbsp;Reset on Zone Change
@@ -48,6 +48,29 @@
           color="green-accent-4"
           hide-details
           @change="handleResetOnZoneChange"
+        ></v-switch>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="auto" class="pb-0">
+        <v-row class="mb-2">
+          <v-icon icon="mdi-dock-window"></v-icon>&nbsp;Window Mode
+        </v-row>
+        <v-row class="mb-3">
+          <small
+            >Toggles between overlay mode or always-on-top mode (requires app
+            restart)</small
+          >
+        </v-row>
+      </v-col>
+      <v-spacer></v-spacer>
+      <v-col class="mb-0 pb-0 pt-0 mt-0" cols="auto">
+        <v-switch
+          v-model="windowMode"
+          :label="windowMode ? 'Overlay' : 'On Top'"
+          color="green-accent-4"
+          hide-details
+          @change="handleWindowModeChange"
         ></v-switch>
       </v-col>
     </v-row>
@@ -110,12 +133,14 @@ export default defineComponent({
   setup() {
     let pauseOnPhaseTransition = ref(true);
     let resetOnZoneChange = ref(true);
+    let windowMode = ref(false); // False = Window | True = Overlay
     let anonymizeMeter = ref(false);
     let removeOverkillDamage = ref(true);
 
     return {
       pauseOnPhaseTransition,
       resetOnZoneChange,
+      windowMode,
       anonymizeMeter,
       removeOverkillDamage,
     };
@@ -140,6 +165,14 @@ export default defineComponent({
       this.getSetting("resetOnZoneChange")
         .then((d: { message: { value: boolean } }) => {
           this.resetOnZoneChange = d.message.value;
+        })
+        .catch((err: Error) => {
+          console.error(err);
+        });
+
+      this.getSetting("windowMode")
+        .then((d: { message: { value: number } }) => {
+          this.windowMode = d.message.value === 0 ? false : true;
         })
         .catch((err: Error) => {
           console.error(err);
@@ -174,6 +207,9 @@ export default defineComponent({
             case "resetOnZoneChange":
               this.resetOnZoneChange = value;
               break;
+            case "windowMode":
+              this.windowMode = value === 0 ? false : true;
+              break;
             case "anonymizeMeter":
               this.anonymizeMeter = value;
               break;
@@ -196,6 +232,12 @@ export default defineComponent({
       this.updateSetting({
         key: "resetOnZoneChange",
         value: this.resetOnZoneChange,
+      });
+    },
+    handleWindowModeChange() {
+      this.updateSetting({
+        key: "windowMode",
+        value: this.windowMode ? 1 : 0,
       });
     },
     handleAnonymizeChange() {

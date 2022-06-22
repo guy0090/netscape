@@ -1,5 +1,5 @@
 import log from "electron-log";
-import { packetParser } from "@/background";
+import { packetParser, win } from "@/background";
 import { ipcMain, app, shell } from "electron";
 import AppStore from "@/persistance/store";
 
@@ -57,6 +57,30 @@ class DamageMeterEvents {
             };
           case "open-url":
             if (arg.url) shell.openExternal(arg.url);
+            break;
+          case "toggle-mini":
+            try {
+              const val = arg.mini;
+              if (val) {
+                const { width, height, x, y } = win.getBounds();
+
+                win.setMinimumSize(346, 61);
+                win.setBounds({ x, y: y + height - 61, width, height: 61 });
+              } else {
+                const { x, y } = appStore.get("meterPosition") as {
+                  x: number;
+                  y: number;
+                };
+                const { width, height } = appStore.get("meterDimensions") as {
+                  width: number;
+                  height: number;
+                };
+                win.setBounds({ x, y, width, height });
+                win.setMinimumSize(346, 160);
+              }
+            } catch (err) {
+              return err;
+            }
             break;
           default:
             return { error: "Invalid event" };

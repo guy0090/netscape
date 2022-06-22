@@ -8,6 +8,10 @@
       <span class="draggable">&nbsp;v{{ version }} {{ getBossTitle() }}</span>
       <v-col class="draggable"></v-col>
       <v-icon
+        :icon="minify ? 'mdi-plus' : 'mdi-minus'"
+        @click="handleMiniToggle"
+      ></v-icon>
+      <v-icon
         v-if="!compact"
         class="settings-icon me-1"
         icon="mdi-view-compact-outline"
@@ -25,7 +29,12 @@
         @click="handleSettingsClick"
       ></v-icon>
     </v-system-bar>
-    <v-main class="main-panel" style="padding-bottom: 37px">
+    <v-main
+      class="main-panel"
+      :style="`padding-bottom: 37px; ${
+        minify ? 'display: none !important;' : ''
+      }`"
+    >
       <router-view
         :compact="compact"
         :session="session"
@@ -260,10 +269,12 @@ export default defineComponent({
             this.updateSession(message);
 
             if (this.session.paused || this.isPaused) return;
-            if (!this.sessionTimer && this.session.firstPacket !== 0)
+            if (!this.sessionTimer && this.session.firstPacket !== 0) {
               this.startSessionTimer();
-            else if (this.session.firstPacket === 0 && this.sessionTimer)
+              if (this.minify) this.handleMiniToggle();
+            } else if (this.session.firstPacket === 0 && this.sessionTimer) {
               this.stopSessionTimer();
+            }
 
             break;
           case "end-session":
@@ -511,6 +522,15 @@ export default defineComponent({
         this.$router.push({ name: "settings" });
       }
     },
+    handleMiniToggle() {
+      this.minify = !this.minify;
+
+      (window as any).ipcBridge.invoke("toMain", {
+        message: "toggle-mini",
+        mini: this.minify,
+      });
+      return;
+    },
   },
 
   setup() {
@@ -536,6 +556,7 @@ export default defineComponent({
       damageStatistics: {} as DamageStatistics,
     } as SimpleSession);
     let version = ref("0.0.1");
+    let minify = ref(false);
 
     return {
       showConsoleCounter,
@@ -553,6 +574,7 @@ export default defineComponent({
       pausedFor,
       session,
       version,
+      minify,
     };
   },
 });

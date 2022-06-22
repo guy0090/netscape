@@ -15,7 +15,9 @@
         <v-col class="py-1 px-3 align-self-center">
           <v-row class="pb-1">
             <v-col cols="auto" class="py-0 px-0">
-              <strong v-if="anon">{{ entity?.class }}</strong>
+              <strong v-if="anon">{{
+                store.getters.getClassName(entity?.classId)
+              }}</strong>
               <strong v-else>{{ entity?.name }}</strong>
             </v-col>
             <v-col cols="auto" class="py-0 px-1">
@@ -109,7 +111,7 @@
           <v-row class="pb-1">
             <v-col cols="auto" class="py-0 pe-1 ps-0">
               <strong class="text-truncate" style="font-size: 11pt" v-if="anon">
-                {{ entity?.class }}
+                {{ store.getters.getClassName(entity?.classId) }}
               </strong>
               <strong class="text-truncate" style="font-size: 11pt" v-else>{{
                 entity?.name
