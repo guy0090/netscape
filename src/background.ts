@@ -45,6 +45,7 @@ export const windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow;
 export let attached = false;
 export let tray: Tray;
+export let updateInterval: ReturnType<typeof setInterval> | undefined;
 
 function setupTray() {
   tray = new Tray(
@@ -57,6 +58,13 @@ function setupTray() {
     {
       label: "Quit",
       click() {
+        try {
+          packetParser.stopBroadcasting();
+          electronBridge.closeConnection();
+          clearInterval(updateInterval);
+        } catch {
+          // ignore
+        }
         app.quit();
       },
     },
@@ -176,20 +184,13 @@ async function createWindow() {
     // win.loadURL("app://./index.html");
     win.loadURL(`file://${__dirname}/index.html`);
     // win.webContents.openDevTools({ mode: "detach", activate: false });
-    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName) => {
-      const dialogOpts = {
-        type: "info",
-        buttons: ["Restart", "Later"],
-        title: "Application Update",
-        message: process.platform === "win32" ? releaseNotes : releaseName,
-        detail:
-          "A new version has been downloaded. Restart the application to apply the updates.",
-      };
-
-      dialog.showMessageBox(dialogOpts).then((returnValue) => {
-        if (returnValue.response === 0) autoUpdater.quitAndInstall();
-      });
+    autoUpdater.on("update-downloaded", () => {
+      autoUpdater.quitAndInstall();
     });
+
+    updateInterval = setInterval(() => {
+      autoUpdater.checkForUpdates();
+    }, 1000 * 60 * 10);
 
     autoUpdater.checkForUpdatesAndNotify();
   }
@@ -238,8 +239,13 @@ app.on("window-all-closed", () => {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== "darwin") {
-    packetParser.stopBroadcasting();
-    electronBridge.closeConnection();
+    try {
+      packetParser.stopBroadcasting();
+      electronBridge.closeConnection();
+      clearInterval(updateInterval);
+    } catch {
+      // ignore
+    }
     app.quit();
   }
 });
@@ -262,8 +268,9 @@ app.on("ready", async () => {
     try {
       packetParser.stopBroadcasting();
       electronBridge.closeConnection();
-    } catch (err) {
-      log.error(`Error closing connection: ${err}`);
+      clearInterval(updateInterval);
+    } catch {
+      // ignore
     }
     app.quit();
   }
@@ -336,6 +343,7 @@ app.on("ready", async () => {
     try {
       packetParser.stopBroadcasting();
       electronBridge.closeConnection();
+      clearInterval(updateInterval);
       app.quit();
     } catch (err) {
       dialog.showErrorBox(
@@ -358,6 +366,7 @@ if (isDevelopment) {
       if (data === "graceful-exit") {
         packetParser.stopBroadcasting();
         electronBridge.closeConnection();
+        clearInterval(updateInterval);
         app.quit();
       }
     });
@@ -365,6 +374,7 @@ if (isDevelopment) {
     process.on("SIGTERM", () => {
       packetParser.stopBroadcasting();
       electronBridge.closeConnection();
+      clearInterval(updateInterval);
       app.quit();
     });
   }
