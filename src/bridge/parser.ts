@@ -622,10 +622,12 @@ export class PacketParser extends EventEmitter {
     }
     const activeSkill: Skill = source.skills[packet.skillId];
 
-    // TODO: **should** remove insanely high bleed ticks or broken damage from grenades
+    // Test removing broken damage from Valtan Gate 1 fight
     if (
       (packet.skillName === "Bleed" || packet.skillId === 0) &&
-      packet.damage > 5000000
+      [480005, 480006, 480009, 480010, 480011, 480026, 480031, 480032].includes(
+        tryParseInt(target.npcId)
+      )
     )
       return;
 
