@@ -4,7 +4,6 @@ import AppStore from "@/persistance/store";
 // import AppStore from "@/persistance/store";
 import axios from "axios";
 import { shell } from "electron";
-
 export const UPLOAD_URL = process.env.VUE_APP_UPLOAD_URL;
 export const SITE_URL = process.env.VUE_APP_LOGS_URL;
 

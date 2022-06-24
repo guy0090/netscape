@@ -24,7 +24,7 @@ import {
   Stats,
 } from "@/encounters/objects";
 import { getClassIdFromSkillId } from "@/util/skills";
-import { saveEncounter } from "@/encounters/helpers";
+import { getEntityDps, getTotalDps, saveEncounter } from "@/encounters/helpers";
 import {
   openInBrowser,
   uploadSession,
@@ -214,6 +214,11 @@ export class PacketParser extends EventEmitter {
     if (this.hasBoss(this.session.entities, false)) {
       const clone = cloneDeep(this.session);
       clone.cleanEntities();
+
+      clone.damageStatistics.dps = getTotalDps(clone);
+      clone.entities.forEach((e) => {
+        e.stats.dps = getEntityDps(e, clone.firstPacket, clone.lastPacket);
+      });
 
       log.info("Boss is present; Saving encounter");
       saveEncounter(clone, true, "gzip", isDevelopment).catch((err) => {

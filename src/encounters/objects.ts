@@ -86,17 +86,20 @@ export class DamageStatistics {
   public totalDamageTaken: number;
   public topDamageDealt: number;
   public topDamageTaken: number;
+  public dps: number;
 
   public constructor(damageStatistics?: {
     totalDamageDealt?: number;
     totalDamageTaken?: number;
     topDamageDealt?: number;
     topDamageTaken?: number;
+    dps?: number;
   }) {
     this.totalDamageDealt = damageStatistics?.totalDamageDealt || 0;
     this.totalDamageTaken = damageStatistics?.totalDamageTaken || 0;
     this.topDamageDealt = damageStatistics?.topDamageDealt || 0;
     this.topDamageTaken = damageStatistics?.topDamageTaken || 0;
+    this.dps = damageStatistics?.dps || 0;
   }
 }
 
@@ -147,6 +150,7 @@ export class Stats {
   public healing: number;
   public damageTaken: number;
   public deaths: number;
+  public dps: number;
 
   constructor(stats?: { [key: string]: number }) {
     this.hits = stats?.hits || 0;
@@ -158,6 +162,7 @@ export class Stats {
     this.healing = stats?.healing || 0;
     this.damageTaken = stats?.damageTaken || 0;
     this.deaths = stats?.deaths || 0;
+    this.dps = stats?.dps || 0;
   }
 }
 

@@ -1,7 +1,7 @@
 import os from "os";
 import fs from "fs";
 import log from "electron-log";
-import { Session } from "./objects";
+import { Entity, ENTITY_TYPE, Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
 
 export const USER_HOME_DIR = os.homedir();
@@ -82,4 +82,21 @@ export const readEncounter = async (
     log.error("Error reading encounter: " + (err as Error).message);
     return undefined;
   }
+};
+
+export const getTotalDps = (log: Session) => {
+  const duration = (log.lastPacket - log.firstPacket) / 1000;
+  let total = 0;
+  for (const entity of log.entities) {
+    if (entity.type !== ENTITY_TYPE.PLAYER) continue;
+    total += entity.stats.damageDealt;
+  }
+  return duration > 0 && total > 0 ? total / duration : 0;
+};
+
+export const getEntityDps = (entity: Entity, begin: number, end: number) => {
+  const duration = (end - begin) / 1000;
+  return duration > 0 && entity.stats.damageDealt > 0
+    ? entity.stats.damageDealt / duration
+    : 0;
 };
