@@ -28,7 +28,7 @@
             :src="
               require(`@/assets/sprites/emojis/${Math.floor(
                 Math.random() * 42
-              )}.png`)
+              )}.webp`)
             "
           />
         </v-col>
