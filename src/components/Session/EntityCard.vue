@@ -101,14 +101,14 @@
   >
     <v-card-content>
       <v-row>
-        <v-col cols="auto" class="py-1 px-1">
+        <v-col cols="auto" class="pa-0 me-1">
           <v-img
             class="class-icon-compact"
             :src="require(`@/assets/sprites/classes/${entity?.classId}.webp`)"
           />
         </v-col>
         <v-col class="py-1 ps-3 pe-4 align-self-center">
-          <v-row class="pb-1">
+          <v-row>
             <v-col cols="auto" class="py-0 pe-1 ps-0">
               <strong class="text-truncate" style="font-size: 11pt" v-if="anon">
                 {{ store.getters.getClassName(entity?.classId) }}
@@ -124,11 +124,17 @@
               <small v-else>&nbsp;</small>
             </v-col>
             <v-spacer></v-spacer>
+            <v-col cols="auto" class="py-0 px-1">
+              <small>{{ abbrNum(entity?.stats?.damageDealt, 1) }} </small>
+              <small style="padding-left: 2px; font-size: 8pt"
+                >({{ getPercentDamageDealt() }}%)</small
+              >
+            </v-col>
             <v-col cols="auto" class="py-0 px-0">
               <strong style="font-size: 11pt">{{ getEntityDPS() }}/s</strong>
             </v-col>
           </v-row>
-          <v-row>
+          <v-row hidden>
             <v-col cols="auto" class="py-0 px-0">
               <small>C: {{ getEntityCounters() }}&nbsp;</small>
               <small>CR: {{ getEntityCritRate() }}%&nbsp;</small>

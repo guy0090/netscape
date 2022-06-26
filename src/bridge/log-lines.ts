@@ -5,13 +5,40 @@ import { ENTITY_TYPE } from "../encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
 
-// logId = 0
+// logId = -1
 export class LogMessage {
   timestamp: number;
   message: string | unknown;
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
     this.message = lineSplit[2];
+  }
+}
+
+// logId = 0
+export class LogInitPc {
+  timestamp: number;
+  id: string;
+  name: string;
+  classId: number;
+  class: string;
+  level: number;
+  gearLevel: number;
+  currentHp: number;
+  maxHp: number;
+  type: ENTITY_TYPE;
+
+  constructor(lineSplit: string[]) {
+    this.timestamp = +new Date(lineSplit[1]);
+    this.id = lineSplit[2];
+    this.name = lineSplit[3] || "Unknown Entity";
+    this.classId = tryParseInt(lineSplit[4]);
+    this.class = lineSplit[5] || "Unknown Class";
+    this.level = tryParseInt(lineSplit[6]);
+    this.gearLevel = tryParseFloat(lineSplit[7]);
+    this.currentHp = tryParseInt(lineSplit[8]);
+    this.maxHp = tryParseInt(lineSplit[9]);
+    this.type = ENTITY_TYPE.PLAYER;
   }
 }
 
@@ -64,29 +91,9 @@ export class LogPhaseTransition {
 }
 
 // logId = 3
-export class LogNewPc {
-  timestamp: number;
-  id: string;
-  name: string;
-  classId: number;
-  class: string;
-  level: number;
-  gearLevel: number;
-  currentHp: number;
-  maxHp: number;
-  type: ENTITY_TYPE;
-
+export class LogNewPc extends LogInitPc {
   constructor(lineSplit: string[]) {
-    this.timestamp = +new Date(lineSplit[1]);
-    this.id = lineSplit[2];
-    this.name = lineSplit[3] || "Unknown Entity";
-    this.classId = tryParseInt(lineSplit[4]);
-    this.class = lineSplit[5] || "Unknown Class";
-    this.level = tryParseInt(lineSplit[6]);
-    this.gearLevel = tryParseFloat(lineSplit[7]);
-    this.currentHp = tryParseInt(lineSplit[8]);
-    this.maxHp = tryParseInt(lineSplit[9]);
-    this.type = ENTITY_TYPE.PLAYER;
+    super(lineSplit);
   }
 }
 
