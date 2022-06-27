@@ -2,6 +2,7 @@
 
 import path from "path";
 import log from "electron-log";
+import ms from "ms";
 import {
   app,
   dialog,
@@ -192,6 +193,14 @@ async function createWindow() {
     autoUpdater.on("update-downloaded", () => {
       autoUpdater.quitAndInstall();
     });
+
+    setInterval(() => {
+      try {
+        autoUpdater.checkForUpdatesAndNotify();
+      } catch (err) {
+        log.error("Update check failed", err);
+      }
+    }, ms("10m")); // 10min checks
   }
 }
 

@@ -45,6 +45,14 @@ export class ElectronBridge extends EventEmitter {
       this.emit("failed-to-connect");
     }
 
+    this.connection?.on("message", (message) => {
+      log.info("Logger:", message);
+    });
+
+    (this.connection as Connection).onDisconnect = () => {
+      this.emit("disconnected");
+    };
+
     this.connection?.on("ready", (msg) => {
       log.info(msg);
 
@@ -52,14 +60,6 @@ export class ElectronBridge extends EventEmitter {
       this.connectionTimeout = undefined;
 
       this.emit("ready");
-
-      (this.connection as Connection).onDisconnect = () => {
-        this.emit("disconnected");
-      };
-
-      this.connection?.on("message", (message) => {
-        log.info("Logger -> Main:", message);
-      });
 
       this.connection?.on("packet", (packet) => {
         const data = this.fromBase64(packet);
