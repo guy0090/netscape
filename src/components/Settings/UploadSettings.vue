@@ -130,6 +130,8 @@ export default defineComponent({
       "getSetting",
       "getApiKey",
       "setApiKey",
+      "debug",
+      "error",
     ]),
     applySettings() {
       this.getSetting("showUploadButton")
@@ -137,7 +139,7 @@ export default defineComponent({
           this.showUploadButton = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("openInBrowserOnUpload")
@@ -145,7 +147,7 @@ export default defineComponent({
           this.openInBrowserOnUpload = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("uploadLogs")
@@ -153,7 +155,7 @@ export default defineComponent({
           this.uploadLogs = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
 
       this.getApiKey()
@@ -164,16 +166,16 @@ export default defineComponent({
           } else {
             this.updateSetting({ key: "uploadLogs", value: false })
               .then(() => {
-                console.log("Upload logs disabled");
+                this.debug("Upload logs disabled");
                 this.uploadLogs = false;
               })
               .catch((err) => {
-                console.error(`Error updating uploadLogs: ${err}`);
+                this.error(`Error updating uploadLogs:`, err);
               });
           }
         })
         .catch((err) => {
-          console.error(err);
+          this.error(err);
         });
     },
     listenForChanges() {
@@ -235,12 +237,12 @@ export default defineComponent({
             this.uploadLogs = false;
           })
           .catch((err) => {
-            console.error(`Error updating uploadLogs: ${err}`);
+            this.error(`Error updating uploadLogs:`, err);
           });
       }
 
       this.setApiKey(val).catch((err) => {
-        console.error(`Error updating upload key: ${err}`);
+        this.error(`Error updating upload key:`, err);
       });
     },
   },

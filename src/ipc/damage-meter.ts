@@ -64,8 +64,14 @@ class DamageMeterEvents {
               if (val) {
                 const { width, height, x, y } = win.getBounds();
 
+                const direction = appStore.get("minifyDirection");
                 win.setMinimumSize(346, 61);
-                win.setBounds({ x, y: y + height - 61, width, height: 61 });
+                win.setBounds({
+                  x,
+                  y: y + (direction === 0 ? height - 61 : 0),
+                  width,
+                  height: 61,
+                });
               } else {
                 const { x, y } = appStore.get("meterPosition") as {
                   x: number;

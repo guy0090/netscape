@@ -8,8 +8,8 @@
       <span class="draggable">&nbsp;v{{ version }} {{ getBossTitle() }}</span>
       <v-col class="draggable"></v-col>
       <v-icon
-        :icon="minify ? 'mdi-plus' : 'mdi-minus'"
-        @click="handleMiniToggle"
+        :icon="minified ? 'mdi-plus' : 'mdi-minus'"
+        @click="handleMiniToggle(true)"
       ></v-icon>
       <v-icon
         v-if="!compact"
@@ -32,7 +32,7 @@
     <v-main
       class="main-panel"
       :style="`padding-bottom: 37px; ${
-        minify ? 'display: none !important;' : ''
+        minified ? 'display: none !important;' : ''
       }`"
     >
       <router-view
@@ -111,7 +111,12 @@
             @click="resumeSession()"
           ></v-btn>
         </v-col>
-        <v-col cols="auto" class="ps-1 pe-0 py-0 align-self-center">
+        <v-col
+          cols="auto"
+          :class="`${
+            session.live ? 'ps-1' : 'ps-0'
+          } pe-0 py-0 align-self-center`"
+        >
           <v-btn
             color="grey-darken-3"
             rounded="sm"
@@ -146,7 +151,7 @@ export default defineComponent({
         this.version = version;
       })
       .catch((err: Error) => {
-        console.error(err.message);
+        this.error(err.message);
       });
 
     this.applySettings();
@@ -162,6 +167,8 @@ export default defineComponent({
       "resumeSession",
       "getVersion",
       "getApiKey",
+      "debug",
+      "error",
     ]),
     resetSessionButton() {
       this.resetSession();
@@ -183,7 +190,7 @@ export default defineComponent({
         })
         .catch((err: Error) => {
           htmlFrame.style.opacity = "0.9";
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("compactStyle")
@@ -191,7 +198,7 @@ export default defineComponent({
           this.compact = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("showUploadButton")
@@ -199,7 +206,7 @@ export default defineComponent({
           this.showUploadButton = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("uploadLogs")
@@ -207,7 +214,20 @@ export default defineComponent({
           this.uploadLogs = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
+        });
+
+      this.getSetting("minifyDelay")
+        .then((d: { message: { value: number } }) => {
+          this.minifyDelay = d.message.value;
+          if (this.minifyDelay > 0) {
+            this.debug("Starting minify timer with delay: " + this.minifyDelay);
+            this.stopMinifyTimer();
+            this.startMinifyTimer();
+          }
+        })
+        .catch((err: Error) => {
+          this.error(err);
         });
     },
     listenForIpcEvents() {
@@ -219,7 +239,7 @@ export default defineComponent({
           case "new-setting":
             switch (message.setting) {
               case "compactStyle":
-                console.log(
+                this.debug(
                   "Got compact change",
                   this.compact,
                   "=>",
@@ -229,7 +249,7 @@ export default defineComponent({
                   this.compact = message.value;
                 break;
               case "anonymizeMeter":
-                console.log(
+                this.debug(
                   "Got anon change",
                   this.anonymize,
                   "=>",
@@ -239,7 +259,7 @@ export default defineComponent({
                   this.anonymize = message.value;
                 break;
               case "showUploadButton":
-                console.log(
+                this.debug(
                   "Got showUploadButton change",
                   this.showUploadButton,
                   "=>",
@@ -249,7 +269,7 @@ export default defineComponent({
                   this.showUploadButton = message.value;
                 break;
               case "uploadLogs":
-                console.log(
+                this.debug(
                   "Got upload change",
                   this.uploadLogs,
                   "=>",
@@ -258,6 +278,19 @@ export default defineComponent({
                 if (message.value !== this.uploadLogs)
                   this.uploadLogs = message.value;
                 break;
+              case "minifyDelay":
+                if (message.value !== this.minifyDelay) {
+                  this.debug("Updating minify delay");
+                  this.minifyDelay = message.value;
+                  if (message.value === 0) {
+                    this.debug("New delay is 0, stopping timer");
+                    this.stopMinifyTimer();
+                  } else {
+                    this.debug("New delay is not 0, (re)starting timer");
+                    this.stopMinifyTimer();
+                    this.startMinifyTimer();
+                  }
+                }
             }
             break;
           case "session":
@@ -271,16 +304,21 @@ export default defineComponent({
             if (this.session.paused || this.isPaused) return;
             if (!this.sessionTimer && this.session.firstPacket !== 0) {
               this.startSessionTimer();
-              if (this.minify) this.handleMiniToggle();
+              if (this.minified) this.handleMiniToggle();
             } else if (this.session.firstPacket === 0 && this.sessionTimer) {
               this.stopSessionTimer();
             }
 
             break;
           case "end-session":
-            console.log("Got end session");
+            this.debug("Got end session");
             this.stopSessionTimer(false);
             this.isPaused = true;
+
+            if (!this.minified) {
+              this.stopMinifyTimer();
+              this.startMinifyTimer();
+            }
 
             if (!message.live) {
               this.updateSession(message);
@@ -290,19 +328,33 @@ export default defineComponent({
             }
             break;
           case "pause-session":
-            console.log("Got pause session event");
+            this.debug("Got pause session event");
             this.updateSession(message);
             if (this.isPaused) return;
             this.isPaused = true;
             break;
           case "resume-session":
-            console.log("Got resume session event");
+            this.debug("Got resume session event");
             this.updateSession(message);
             if (!this.isPaused) return;
             this.isPaused = false;
             break;
           case "reset-session":
-            console.log("FOO RESET");
+            // this.debug("FOO RESET");
+            break;
+          case "zone-change":
+            this.debug("Got zone change, trying to start minify timer");
+            if (
+              this.minifyDelay > 0 &&
+              this.minifyTimer === undefined &&
+              !this.minified
+            ) {
+              this.debug(
+                "Starting minify timer with delay: " + this.minifyDelay
+              );
+              this.stopMinifyTimer();
+              this.startMinifyTimer();
+            }
             break;
         }
       });
@@ -331,7 +383,7 @@ export default defineComponent({
           this.compact = true;
         })
         .catch((err) => {
-          console.error(err);
+          this.error(err);
         });
     },
     disabledCompact() {
@@ -340,7 +392,7 @@ export default defineComponent({
           this.compact = false;
         })
         .catch((err) => {
-          console.error(err);
+          this.error(err);
         });
     },
     enableUploads() {
@@ -354,14 +406,14 @@ export default defineComponent({
                 this.uploadLogs = true;
               })
               .catch((err) => {
-                console.error(err);
+                this.error(err);
               });
           } else {
             this.uploadLogs = false;
           }
         })
         .catch((err) => {
-          console.error(err);
+          this.error(err);
         });
     },
     disableUploads() {
@@ -370,7 +422,7 @@ export default defineComponent({
           this.uploadLogs = false;
         })
         .catch((err) => {
-          console.error(err);
+          this.error(err);
         });
     },
     getBossEntity() {
@@ -432,7 +484,7 @@ export default defineComponent({
       }
     },
     startSessionTimer() {
-      console.log("Started monitoring session");
+      this.debug("Started monitoring session");
       if (this.sessionTimer) return;
 
       this.sessionTimer = setInterval(() => {
@@ -455,6 +507,36 @@ export default defineComponent({
         this.sessionDuration = "00:00";
         this.sessionDps = "0";
         this.pausedFor = 0;
+      }
+    },
+    startMinifyTimer() {
+      if (this.minifyDelay > 0 && this.minifyTimer === undefined) {
+        this.debug("Started minify timer");
+        this.minifyTimer = setTimeout(() => {
+          if (!this.minified) {
+            if (
+              this.$route.name === "settings" ||
+              this.$route.name === "breakdown"
+            ) {
+              this.debug("Restarting auto minify timer: In settings route");
+              this.stopMinifyTimer();
+              this.startMinifyTimer();
+            } else if (!this.session.live || this.session.firstPacket === 0) {
+              this.debug("Auto minifying: reached set delay");
+              this.stopMinifyTimer();
+              this.handleMiniToggle();
+            }
+          } else {
+            this.debug("Skipping auto minify: already minified");
+            this.stopMinifyTimer();
+          }
+        }, this.minifyDelay);
+      }
+    },
+    stopMinifyTimer() {
+      if (this.minifyTimer !== undefined) {
+        clearTimeout(this.minifyTimer);
+        this.minifyTimer = undefined;
       }
     },
     getBossTitle() {
@@ -519,15 +601,27 @@ export default defineComponent({
       if (this.$route.name === "settings") {
         this.$router.go(-1);
       } else {
+        if (this.minified) this.handleMiniToggle();
         this.$router.push({ name: "settings" });
       }
     },
-    handleMiniToggle() {
-      this.minify = !this.minify;
+    handleMiniToggle(click = false) {
+      this.minified = !this.minified;
+
+      if (
+        !click &&
+        !this.minified &&
+        this.minifyDelay > 0 &&
+        (!this.session.live || this.session.firstPacket === 0)
+      ) {
+        this.debug("Minify delay is set, restarting minify timer on expand");
+        this.stopMinifyTimer();
+        this.startMinifyTimer();
+      }
 
       (window as any).ipcBridge.invoke("toMain", {
         message: "toggle-mini",
-        mini: this.minify,
+        mini: this.minified,
       });
       return;
     },
@@ -556,7 +650,9 @@ export default defineComponent({
       damageStatistics: {} as DamageStatistics,
     } as SimpleSession);
     let version = ref("0.0.1");
-    let minify = ref(false);
+    let minified = ref(false);
+    let minifyDelay = ref(0);
+    let minifyTimer = ref({} as undefined | ReturnType<typeof setTimeout>);
 
     return {
       showConsoleCounter,
@@ -574,7 +670,9 @@ export default defineComponent({
       pausedFor,
       session,
       version,
-      minify,
+      minified,
+      minifyDelay,
+      minifyTimer,
     };
   },
 });

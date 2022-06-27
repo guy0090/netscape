@@ -74,7 +74,7 @@ const storeSchema: Schema<Record<string, unknown>> = {
   },
   useWinpcap: {
     type: "boolean",
-    default: false,
+    default: true,
   },
   windowMode: {
     type: "number",
@@ -92,13 +92,21 @@ const storeSchema: Schema<Record<string, unknown>> = {
     type: "boolean",
     default: false,
   },
+  minifyDirection: {
+    default: 0, // 0 = Down, 1 = Up
+    type: "number",
+  },
+  minifyDelay: {
+    default: 0, // in milliseconds
+    type: "number",
+  },
 };
 
 class AppStore extends EventEmitter {
   public store: Store;
   public static keytarAccount = os.userInfo().username;
   public static keytarApiKeyService =
-    "netscape-upload-token" + isDevelopment ? "-dev" : "";
+    "netscape-upload-token" + (isDevelopment ? "-dev" : "");
 
   constructor() {
     // Extend

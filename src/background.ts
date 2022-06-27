@@ -39,6 +39,9 @@ export const parserConfig: PacketParserConfig = {
   openUploadInBrowser: appStore.get("openInBrowserOnUpload") as boolean,
 };
 
+// TODO: Add a settings option - forced for now. Falls back to raw sockets
+if (!appStore.get("useWinpcap")) appStore.set("useWinpcap", true);
+
 export const packetParser = new PacketParser(parserConfig);
 
 export const windowMode = appStore.get("windowMode") as number;
@@ -184,15 +187,11 @@ async function createWindow() {
     // win.loadURL("app://./index.html");
     win.loadURL(`file://${__dirname}/index.html`);
     // win.webContents.openDevTools({ mode: "detach", activate: false });
+
+    autoUpdater.checkForUpdatesAndNotify();
     autoUpdater.on("update-downloaded", () => {
       autoUpdater.quitAndInstall();
     });
-
-    updateInterval = setInterval(() => {
-      autoUpdater.checkForUpdates();
-    }, 1000 * 60 * 10);
-
-    autoUpdater.checkForUpdatesAndNotify();
   }
 }
 
@@ -330,12 +329,20 @@ app.on("ready", async () => {
         });
     });
 
+    packetParser.on("zone-change", () => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "zone-change",
+          message: "",
+        });
+    });
+
     if (windowMode === 1) {
-      console.log("Attaching overlay");
+      log.info("Attaching overlay");
       // Attach overlay delayed
       setTimeout(() => {
         initOverlay();
-      }, 2000);
+      }, 1000);
     }
   });
 

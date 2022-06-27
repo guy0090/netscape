@@ -128,7 +128,13 @@ export default defineComponent({
   },
 
   methods: {
-    ...mapActions(["setOpacity", "setCompactStyle", "getSetting"]),
+    ...mapActions([
+      "setOpacity",
+      "setCompactStyle",
+      "getSetting",
+      "debug",
+      "error",
+    ]),
     applySettings() {
       this.getSetting("opacity")
         .then((d: { message: { value: string } }) => {
@@ -142,7 +148,7 @@ export default defineComponent({
         })
         .catch((err: Error) => {
           this.opacity = "0.9";
-          console.error(err);
+          this.error(err);
         });
 
       this.getSetting("compactStyle")
@@ -150,7 +156,7 @@ export default defineComponent({
           this.compact = d.message.value;
         })
         .catch((err: Error) => {
-          console.error(err);
+          this.error(err);
         });
     },
     listenForChanges() {

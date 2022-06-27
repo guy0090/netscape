@@ -116,7 +116,7 @@ export class PacketParser extends EventEmitter {
       name: "You",
       realName: "",
       classId: 0,
-      level: 0,
+      level: 1,
       gearLevel: 0,
     };
 
@@ -204,10 +204,17 @@ export class PacketParser extends EventEmitter {
         continue;
       }
 
-      const isDead = entity.currentHp <= 0;
-      if (isDead && entity.type === ENTITY_TYPE.BOSS) {
+      if (entity.currentHp <= 0) {
+        log.debug(`Expiring dead entity: ${entity.id}:${entity.name}`);
+        continue;
+      }
+
+      if (
+        entity.type === ENTITY_TYPE.MONSTER ||
+        entity.type === ENTITY_TYPE.UNKNOWN
+      ) {
         log.debug(
-          `Expiring dead non-guardian boss entity: ${entity.id}:${entity.name}`
+          `Expiring unknown/monster entity: ${entity.id}:${entity.name}`
         );
         continue;
       }
@@ -345,6 +352,7 @@ export class PacketParser extends EventEmitter {
           break;
         case 1:
           this.onInitEnv(new LogInitEnv(lineSplit));
+          this.emit("zone-change");
           break;
         case 2:
           this.onPhaseTransition(new LogPhaseTransition(lineSplit));
@@ -411,7 +419,7 @@ export class PacketParser extends EventEmitter {
         this.resetTimer = undefined;
       }
 
-      this.resetSession(false, 0, false);
+      this.resetSession(true, 0, false);
     }
   }
 
@@ -463,8 +471,6 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
-    // Fall back to name if ID isn't found as a special case check
-    // Sometimes player ID will change randomly during run, this is the fallback
     let user = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (!user) {
       user = new Entity(packet);
@@ -474,7 +480,7 @@ export class PacketParser extends EventEmitter {
       }
 
       if (user.id === this.activeUser.id) {
-        log.info("onNewPc: Got active user - setting details");
+        log.debug("onNewPc: Setting active user details");
         user.name = this.activeUser.name; // this.activeUser.realName;
         user.level = this.activeUser.level;
         user.gearLevel = this.activeUser.gearLevel;
@@ -482,11 +488,19 @@ export class PacketParser extends EventEmitter {
 
       this.session.entities.push(user);
     } else {
-      log.debug(`Updating existing PC ${packet.id}:${packet.name}`);
+      log.debug(`onNewPc: Updating existing PC ${packet.id}:${packet.name}`);
       user.currentHp = packet.currentHp;
       user.type = ENTITY_TYPE.PLAYER;
       user.maxHp = packet.maxHp;
       user.id = packet.id;
+
+      if (user.id === this.activeUser.id) {
+        log.debug("onNewPc: Updating active user details");
+        user.name = this.activeUser.name;
+        user.level = this.activeUser.level;
+        user.gearLevel = this.activeUser.gearLevel;
+      }
+
       user.lastUpdate = +new Date();
     }
 
@@ -509,7 +523,10 @@ export class PacketParser extends EventEmitter {
       npc.name = packet.name;
     } else {
       npc = new Entity(packet);
-      this.session.entities.push(npc);
+      // Only persist Boss-type NPCs
+      if (npc.type === ENTITY_TYPE.BOSS || npc.type === ENTITY_TYPE.GUARDIAN) {
+        this.session.entities.push(npc);
+      }
     }
 
     this.hasBossEntity = this.hasBoss(this.session.entities);
@@ -565,6 +582,15 @@ export class PacketParser extends EventEmitter {
       if (packet.sourceId !== packet.sourceName) {
         this.session.entities.push(source);
       }
+
+      if (source.id === this.activeUser.id) {
+        log.info("[S] onDamage: Setting active user details");
+        source.name = this.activeUser.name;
+        source.level = this.activeUser.level;
+        source.gearLevel = this.activeUser.gearLevel;
+        source.classId = this.activeUser.classId;
+        source.class = getClassName(source.classId);
+      }
     } else {
       const entitySkills = Object.values(source.skills);
       if (source.classId === 0 && entitySkills.length > 0) {
@@ -575,9 +601,9 @@ export class PacketParser extends EventEmitter {
             (source as Entity).class = getClassName(classId);
             (source as Entity).type = ENTITY_TYPE.PLAYER;
             log.debug(
-              `Unknown entity ${(source as Entity).id} was detected as class: ${
-                (source as Entity).class
-              }`
+              `[S] onDamage: Unknown entity ${
+                (source as Entity).id
+              } was detected as class: ${(source as Entity).class}`
             );
             return false;
           }
@@ -585,6 +611,11 @@ export class PacketParser extends EventEmitter {
         });
       }
 
+      if (source.id === this.activeUser.id) {
+        source.name === this.activeUser.name;
+        source.gearLevel = this.activeUser.gearLevel;
+        source.level = this.activeUser.level;
+      }
       source.lastUpdate = +new Date();
     }
 
@@ -605,8 +636,21 @@ export class PacketParser extends EventEmitter {
         this.session.entities.push(target);
         this.hasBossEntity = this.hasBoss(this.session.entities);
       }
+
+      if (target.id === this.activeUser.id) {
+        log.info("[T] onDamage: Got active user - setting details");
+        target.name = this.activeUser.name;
+        target.level = this.activeUser.level;
+        target.gearLevel = this.activeUser.gearLevel;
+        target.classId = this.activeUser.classId;
+        target.class = getClassName(this.activeUser.classId);
+      }
     } else {
-      if (target.id === this.activeUser.id) target.name = this.activeUser.name;
+      if (target.id === this.activeUser.id) {
+        target.name = this.activeUser.name;
+        target.gearLevel = this.activeUser.gearLevel;
+        target.level = this.activeUser.level;
+      }
       target.currentHp = packet.currentHp;
       target.maxHp = packet.maxHp;
       target.lastUpdate = +new Date();
@@ -705,7 +749,7 @@ export class PacketParser extends EventEmitter {
 
   // logId = 9
   onHeal(packet: LogHeal) {
-    const target = this.getEntity(packet.name, true);
+    const target = this.getEntity(packet.id);
 
     if (target) {
       target.lastUpdate = +new Date();
@@ -715,7 +759,6 @@ export class PacketParser extends EventEmitter {
 
   // logId = 11
   onCounter(packet: LogCounterAttack) {
-    log.debug(`onCounter: ${JSON.stringify(packet)}`);
     const target =
       this.getEntity(packet.targetId) ||
       this.getEntity(packet.targetName, true);

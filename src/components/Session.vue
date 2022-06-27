@@ -80,12 +80,12 @@ export default defineComponent({
         this.anon = d.message.value;
       })
       .catch((err: Error) => {
-        console.error(err);
+        this.error(err);
       });
   },
 
   methods: {
-    ...mapActions(["getSetting", "updateSetting"]),
+    ...mapActions(["getSetting", "updateSetting", "debug", "error"]),
     getUserEntities() {
       let users: Entity[] = [];
       if (this.session && this.session.entities) {

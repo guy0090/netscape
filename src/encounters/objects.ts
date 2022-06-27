@@ -1,3 +1,4 @@
+import log from "electron-log";
 import { v4 as uuidv4 } from "uuid";
 
 export enum ENTITY_TYPE {
@@ -43,28 +44,22 @@ export class Session {
       ENTITY_TYPE.PLAYER,
     ]
   ) {
-    // Filter out entities not in the filter list
     if (entityFilter) {
       this.entities = this.entities.filter((e) =>
         entityFilter?.includes(e.type)
       );
     }
 
-    /* TODO: Decide if this is necessary
-    // If multiple bosses are logged, only keep the most recent one
-    const bosses = this.entities.filter(
-      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
-    );
-
-    if (bosses.length > 1) {
-      const filtered = bosses
-        .sort((a, b) => b.lastUpdate - a.lastUpdate)
-        .slice(1)
-        .map((e) => e.id);
-
-      this.entities = this.entities.filter((e) => !filtered.includes(e.id));
-    }
-    */
+    this.entities = this.entities.filter((e) => {
+      if (e.type === ENTITY_TYPE.BOSS || e.type == ENTITY_TYPE.GUARDIAN)
+        return true;
+      else if (
+        e.type === ENTITY_TYPE.PLAYER &&
+        Object.keys(e.skills).length > 0
+      )
+        return true;
+      else return false;
+    });
   }
 
   getDps() {
@@ -259,6 +254,19 @@ export class SimpleSession {
     this.firstPacket = session.firstPacket || 0;
     this.lastPacket = session.lastPacket || 0;
     this.entities = session.entities.map((entity) => new SimpleEntity(entity));
+
+    // Only keep players with skills
+    this.entities = this.entities.filter((e) => {
+      if (e.type === ENTITY_TYPE.BOSS || e.type == ENTITY_TYPE.GUARDIAN)
+        return true;
+      else if (
+        e.type === ENTITY_TYPE.PLAYER &&
+        Object.keys(e.skills).length > 0
+      )
+        return true;
+      else return false;
+    });
+
     this.damageStatistics = session.damageStatistics;
   }
 }

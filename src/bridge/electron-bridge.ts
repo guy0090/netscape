@@ -45,8 +45,8 @@ export class ElectronBridge extends EventEmitter {
       this.emit("failed-to-connect");
     }
 
-    this.connection?.on("ready", () => {
-      log.info("Logger connection ready");
+    this.connection?.on("ready", (msg) => {
+      log.info(msg);
 
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = undefined;
@@ -62,13 +62,13 @@ export class ElectronBridge extends EventEmitter {
       });
 
       this.connection?.on("packet", (packet) => {
-        const data = this.decodeBase64(packet);
+        const data = this.fromBase64(packet);
         this.emit("packet", data);
       });
     });
   }
 
-  private decodeBase64(str: string): string {
+  private fromBase64(str: string): string {
     return Buffer.from(str, "base64").toString();
   }
 
