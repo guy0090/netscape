@@ -190,10 +190,6 @@ async function createWindow() {
     // win.webContents.openDevTools({ mode: "detach", activate: false });
 
     autoUpdater.checkForUpdatesAndNotify();
-    autoUpdater.on("update-downloaded", () => {
-      autoUpdater.quitAndInstall();
-    });
-
     setInterval(() => {
       try {
         autoUpdater.checkForUpdatesAndNotify();

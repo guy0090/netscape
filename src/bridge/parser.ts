@@ -588,8 +588,6 @@ export class PacketParser extends EventEmitter {
         source.name = this.activeUser.name;
         source.level = this.activeUser.level;
         source.gearLevel = this.activeUser.gearLevel;
-        source.classId = this.activeUser.classId;
-        source.class = getClassName(source.classId);
       }
     } else {
       const entitySkills = Object.values(source.skills);
@@ -642,8 +640,6 @@ export class PacketParser extends EventEmitter {
         target.name = this.activeUser.name;
         target.level = this.activeUser.level;
         target.gearLevel = this.activeUser.gearLevel;
-        target.classId = this.activeUser.classId;
-        target.class = getClassName(this.activeUser.classId);
       }
     } else {
       if (target.id === this.activeUser.id) {
