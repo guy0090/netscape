@@ -4,27 +4,26 @@
     <v-row class="mb-8"
       ><small>These settings modify the functionality of the app</small></v-row
     >
-    <v-row hidden>
+    <v-row>
       <v-col cols="auto" class="pb-0">
         <v-row class="mb-2"
-          ><v-icon icon="mdi-pause"></v-icon>&nbsp;Pause on Fight End
-          <small>&nbsp;(Bosses only)</small></v-row
+          ><v-icon icon="mdi-wifi-arrow-left"></v-icon>&nbsp;Npcap</v-row
         >
         <v-row class="mb-3"
           ><small
-            >Automatically pauses the meter if the boss dies, the party wipes or
-            the phase changes.</small
+            >Toggle between using Npcap. May help if packets aren't being
+            detected.</small
           ></v-row
         >
       </v-col>
       <v-spacer></v-spacer>
       <v-col class="mb-0 pb-0 pt-0 mt-0" cols="auto">
         <v-switch
-          v-model="pauseOnPhaseTransition"
-          :label="pauseOnPhaseTransition ? 'Pause' : 'Don\'t Pause'"
+          v-model="useNpcap"
+          :label="useNpcap ? 'Npcap' : 'Raw Sockets'"
           color="green-accent-4"
           hide-details
-          @change="handlePauseOnPhaseTransition"
+          @change="handleUseNpcapChange"
         ></v-switch>
       </v-col>
     </v-row>
@@ -51,7 +50,7 @@
         ></v-switch>
       </v-col>
     </v-row>
-    <v-row>
+    <v-row class="mt-5">
       <v-col cols="auto" class="pb-0">
         <v-row class="mb-2">
           <v-icon icon="mdi-dock-window"></v-icon>&nbsp;Window Mode
@@ -193,6 +192,7 @@ export default defineComponent({
   name: "GeneralSettings",
 
   setup() {
+    let useNpcap = ref(false);
     let pauseOnPhaseTransition = ref(true);
     let resetOnZoneChange = ref(true);
     let windowMode = ref(false); // False = Window | True = Overlay
@@ -202,6 +202,7 @@ export default defineComponent({
     let minifyDirection = ref(0);
 
     return {
+      useNpcap,
       pauseOnPhaseTransition,
       resetOnZoneChange,
       windowMode,
@@ -227,6 +228,14 @@ export default defineComponent({
       }
     },
     applySettings() {
+      this.getSetting("useWinpcap")
+        .then((d: { message: { value: boolean } }) => {
+          this.useNpcap = d.message.value;
+        })
+        .catch((err: Error) => {
+          this.error(err);
+        });
+
       this.getSetting("pauseOnPhaseTransition")
         .then((d: { message: { value: boolean } }) => {
           this.pauseOnPhaseTransition = d.message.value;
@@ -310,6 +319,12 @@ export default defineComponent({
               break;
           }
         }
+      });
+    },
+    handleUseNpcapChange() {
+      this.updateSetting({
+        key: "useWinpcap",
+        value: this.useNpcap,
       });
     },
     handlePauseOnPhaseTransition() {

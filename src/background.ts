@@ -40,9 +40,6 @@ export const parserConfig: PacketParserConfig = {
   openUploadInBrowser: appStore.get("openInBrowserOnUpload") as boolean,
 };
 
-// TODO: Add a settings option - forced for now. Falls back to raw sockets
-if (!appStore.get("useWinpcap")) appStore.set("useWinpcap", true);
-
 export const packetParser = new PacketParser(parserConfig);
 
 export const windowMode = appStore.get("windowMode") as number;
