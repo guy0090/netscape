@@ -206,7 +206,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.3.5.1");
+  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.4.0.2");
 
   overlayWindow.on("attach", () => {
     attached = true;
