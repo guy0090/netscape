@@ -474,7 +474,7 @@ export class PacketParser extends EventEmitter {
     let user = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (!user) {
       user = new Entity(packet);
-      if (user.classId === 0 && user.class !== "Unknown Class") {
+      if (user.classId === 0) {
         user.classId = getClassId(user.class);
         user.class = getClassName(user.classId);
       }
@@ -489,10 +489,12 @@ export class PacketParser extends EventEmitter {
       this.session.entities.push(user);
     } else {
       log.debug(`onNewPc: Updating existing PC ${packet.id}:${packet.name}`);
+      user.id = packet.id;
+      user.class = packet.class;
+      user.classId = packet.classId;
+      user.maxHp = packet.maxHp;
       user.currentHp = packet.currentHp;
       user.type = ENTITY_TYPE.PLAYER;
-      user.maxHp = packet.maxHp;
-      user.id = packet.id;
 
       if (user.id === this.activeUser.id) {
         log.debug("onNewPc: Updating active user details");
@@ -711,7 +713,7 @@ export class PacketParser extends EventEmitter {
     activeSkill.stats.frontHits += frontAttackCount;
 
     if (source.type === ENTITY_TYPE.PLAYER) {
-      activeSkill.breakdown.push(
+      activeSkill.breakdown?.push(
         new SkillBreakdown({
           timestamp: +new Date(),
           damage: packet.damage,

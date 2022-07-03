@@ -1,4 +1,3 @@
-import log from "electron-log";
 import { v4 as uuidv4 } from "uuid";
 
 export enum ENTITY_TYPE {
@@ -15,6 +14,7 @@ export class Session {
   public live: boolean;
   public firstPacket: number;
   public lastPacket: number;
+  public duration?: number;
   public entities: Entity[];
   public damageStatistics: DamageStatistics;
 
@@ -33,6 +33,7 @@ export class Session {
     this.live = session?.live || true;
     this.firstPacket = session?.firstPacket || 0;
     this.lastPacket = session?.lastPacket || 0;
+    this.duration = session?.duration || 0;
     this.entities = session?.entities || [];
     this.damageStatistics = session?.damageStatistics || new DamageStatistics();
   }
@@ -82,6 +83,7 @@ export class DamageStatistics {
   public topDamageDealt: number;
   public topDamageTaken: number;
   public dps: number;
+  public dpsIntervals?: number[];
 
   public constructor(damageStatistics?: {
     totalDamageDealt?: number;
@@ -89,12 +91,14 @@ export class DamageStatistics {
     topDamageDealt?: number;
     topDamageTaken?: number;
     dps?: number;
+    dpsIntervals?: number[];
   }) {
     this.totalDamageDealt = damageStatistics?.totalDamageDealt || 0;
     this.totalDamageTaken = damageStatistics?.totalDamageTaken || 0;
     this.topDamageDealt = damageStatistics?.topDamageDealt || 0;
     this.topDamageTaken = damageStatistics?.topDamageTaken || 0;
     this.dps = damageStatistics?.dps || 0;
+    this.dpsIntervals = damageStatistics?.dpsIntervals || [];
   }
 }
 
@@ -146,8 +150,21 @@ export class Stats {
   public damageTaken: number;
   public deaths: number;
   public dps: number;
+  public dpsOverTime?: number[];
 
-  constructor(stats?: { [key: string]: number }) {
+  constructor(stats?: {
+    hits?: number;
+    crits?: number;
+    backHits?: number;
+    frontHits?: number;
+    counters?: number;
+    damageDealt?: number;
+    healing?: number;
+    damageTaken?: number;
+    deaths?: number;
+    dps?: number;
+    dpsOverTime?: number[];
+  }) {
     this.hits = stats?.hits || 0;
     this.crits = stats?.crits || 0;
     this.backHits = stats?.backHits || 0;
@@ -158,13 +175,14 @@ export class Stats {
     this.damageTaken = stats?.damageTaken || 0;
     this.deaths = stats?.deaths || 0;
     this.dps = stats?.dps || 0;
+    this.dpsOverTime = stats?.dpsOverTime || [];
   }
 }
 
 export class Skill {
   public id: number;
   public name: string;
-  public breakdown: SkillBreakdown[];
+  public breakdown?: SkillBreakdown[];
   public stats: SkillStats;
 
   constructor(skill: {

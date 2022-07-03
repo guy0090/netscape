@@ -1,5 +1,11 @@
 import log from "electron-log";
-import { ENTITY_TYPE, Session } from "@/encounters/objects";
+import ms from "ms";
+import {
+  ENTITY_TYPE,
+  Entity,
+  Session,
+  SkillBreakdown,
+} from "@/encounters/objects";
 import AppStore from "@/persistance/store";
 // import AppStore from "@/persistance/store";
 import axios from "axios";
@@ -7,6 +13,7 @@ import { shell } from "electron";
 export const UPLOAD_URL = process.env.VUE_APP_UPLOAD_URL;
 export const SITE_URL = process.env.VUE_APP_LOGS_URL;
 
+export const DATA_INTERVAL = ms("5s");
 export const UPLOAD_ENDPOINT = "/logs/upload";
 export const RECENT_ENDPOINT = "/logs/recents";
 
@@ -14,11 +21,10 @@ export const uploadSession = async (session: Session) => {
   try {
     const uploadKey = await AppStore.getPassword();
 
-    // If multiple bosses are logged, only keep the most recent one
     const bosses = session.entities.filter(
       (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
     );
-
+    // If multiple bosses are logged, only keep the most recent one
     if (bosses.length > 1) {
       const filtered = bosses
         .sort((a, b) => b.lastUpdate - a.lastUpdate)
@@ -29,6 +35,27 @@ export const uploadSession = async (session: Session) => {
         (e) => !filtered.includes(e.id)
       );
     }
+
+    // Generate data intervals
+    const intervals = generateIntervals(
+      session.firstPacket,
+      session.lastPacket
+    );
+    session.damageStatistics.dpsIntervals = intervals;
+
+    // Create DPS over time data for ECharts for each player entity
+    for (const e of session.entities) {
+      if (e.type === ENTITY_TYPE.PLAYER) {
+        e.stats.dpsOverTime = getEntityData(intervals, e, session.firstPacket);
+      }
+    }
+
+    // Remove breakdowns; Not needed anymore
+    session.entities.forEach((e) => {
+      Object.values(e.skills).forEach((s) => {
+        delete s.breakdown;
+      });
+    });
 
     const upload = { key: uploadKey, data: session };
 
@@ -101,4 +128,53 @@ export const validateUpload = (session: Session) => {
 export const openInBrowser = (id: string) => {
   const url = `${SITE_URL}/logs/${id}`;
   shell.openExternal(url);
+};
+
+export const getEntityDamageInRange = (
+  begin: number,
+  end: number,
+  entity: Entity
+) => {
+  const skills = Object.values(entity.skills);
+  const damageDealtInRange = skills.reduce((acc, skill) => {
+    const skillEntries = (skill.breakdown as SkillBreakdown[]).filter(
+      (d) => d.timestamp >= begin && d.timestamp <= end
+    );
+    return acc + skillEntries.reduce((acc, d) => acc + d.damage, 0);
+  }, 0);
+
+  if (!damageDealtInRange || isNaN(damageDealtInRange)) return 0;
+  return damageDealtInRange;
+};
+
+export const getEntityDPS = (duration: number, damage: number) => {
+  return damage > 0 ? (damage / duration).toFixed(2) : "0";
+};
+
+export const generateIntervals = (started: number, ended: number) => {
+  const duration = ended - started;
+  const intervals = [];
+
+  const parts = duration / DATA_INTERVAL;
+  for (let i = 0; i <= Math.floor(parts); i++) {
+    if (i === Math.floor(parts)) intervals.push(parts * DATA_INTERVAL);
+    else intervals.push(i * DATA_INTERVAL);
+  }
+  return intervals;
+};
+
+export const getEntityData = (
+  intervals: number[],
+  player: Entity,
+  started: number
+) => {
+  const data: number[] = [];
+
+  intervals.forEach((i) => {
+    const damage = getEntityDamageInRange(started, started + i, player);
+    const dps = parseFloat(getEntityDPS(i / 1000, damage));
+    data.push(dps);
+  });
+
+  return data;
 };
