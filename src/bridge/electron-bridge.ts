@@ -49,12 +49,12 @@ export class ElectronBridge extends EventEmitter {
       log.info("Logger:", message);
     });
 
-    (this.connection as Connection).onDisconnect = () => {
-      this.emit("disconnected");
-    };
-
     this.connection?.on("ready", (msg) => {
-      log.info(msg);
+      log.info(`Logger connection ready: ${msg}`);
+
+      (this.connection as Connection).onDisconnect = () => {
+        this.emit("disconnected");
+      };
 
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = undefined;
