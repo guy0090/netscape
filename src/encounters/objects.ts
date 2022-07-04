@@ -105,7 +105,7 @@ export class DamageStatistics {
 export class Entity {
   public lastUpdate: number;
   public id: string;
-  public npcId: string;
+  public npcId: number;
   public name: string;
   public type: ENTITY_TYPE;
   public class: string;
@@ -121,7 +121,7 @@ export class Entity {
   constructor(entity: Record<string, any>) {
     this.lastUpdate = entity.lastUpdate || +new Date();
     this.id = entity.id;
-    this.npcId = entity.npcId;
+    this.npcId = tryParseNum(entity.npcId);
     this.name = entity.name;
     this.type = entity.type;
     this.class = entity.class;
@@ -292,7 +292,7 @@ export class SimpleSession {
 export class SimpleEntity {
   public lastUpdate: number;
   public id: string;
-  public npcId?: string;
+  public npcId?: number;
   public name: string;
   public type: ENTITY_TYPE;
   public classId: number;
@@ -330,3 +330,22 @@ export class SimpleSkill {
     this.stats = skill.stats;
   }
 }
+
+export const tryParseNum = (
+  intString: string,
+  float = false,
+  defaultValue = 0
+) => {
+  let intNum;
+
+  try {
+    intNum = float
+      ? parseFloat(intString.replaceAll(",", "."))
+      : parseInt(intString);
+    if (isNaN(intNum)) intNum = defaultValue;
+  } catch {
+    intNum = defaultValue;
+  }
+
+  return intNum;
+};

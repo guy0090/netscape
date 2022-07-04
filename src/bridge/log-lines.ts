@@ -1,7 +1,7 @@
 import log from "electron-log";
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { tryParseFloat, tryParseInt } from "./parser";
-import { ENTITY_TYPE } from "../encounters/objects";
+import { tryParseNum } from "@/encounters/objects";
+import { ENTITY_TYPE } from "@/encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
 
@@ -32,12 +32,12 @@ export class LogInitPc {
     this.timestamp = +new Date(lineSplit[1]);
     this.id = lineSplit[2];
     this.name = lineSplit[3] || "Unknown Entity";
-    this.classId = tryParseInt(lineSplit[4]);
+    this.classId = tryParseNum(lineSplit[4]);
     this.class = lineSplit[5] || "Unknown Class";
-    this.level = tryParseInt(lineSplit[6]);
-    this.gearLevel = tryParseFloat(lineSplit[7]);
-    this.currentHp = tryParseInt(lineSplit[8]);
-    this.maxHp = tryParseInt(lineSplit[9]);
+    this.level = tryParseNum(lineSplit[6]);
+    this.gearLevel = tryParseNum(lineSplit[7], true);
+    this.currentHp = tryParseNum(lineSplit[8]);
+    this.maxHp = tryParseNum(lineSplit[9]);
     this.type = ENTITY_TYPE.PLAYER;
   }
 }
@@ -53,12 +53,13 @@ export class LogInitEnv {
     this.timestamp = +new Date(lineSplit[1]);
     this.playerId = lineSplit[2];
     this.playerName = lineSplit[3];
-    this.playerGearLevel = tryParseFloat(lineSplit[4]);
+    this.playerGearLevel = tryParseNum(lineSplit[4], true);
   }
 }
 
 export enum RAID_RESULT {
-  UNK_END = 0, // Raid ended; Not sure when it procs
+  UNK = -1,
+  RAID_RESULT = 0, // Raid ended; Not sure when it procs
   GUARDIAN_DEAD = 1, // Guardian died; Also procs on every Argos phase
   RAID_END = 2, // Non-guardian boss died; Party wiped (does not proc on guardian wipes)
 }
@@ -70,12 +71,12 @@ export class LogPhaseTransition {
 
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
-    const type = tryParseInt(lineSplit[2]);
+    const type = tryParseNum(lineSplit[2]);
 
     log.debug("PhaseLine", lineSplit);
     switch (type) {
       case 0:
-        this.raidResultType = RAID_RESULT.UNK_END;
+        this.raidResultType = RAID_RESULT.RAID_RESULT;
         break;
       case 1:
         this.raidResultType = RAID_RESULT.GUARDIAN_DEAD;
@@ -84,7 +85,7 @@ export class LogPhaseTransition {
         this.raidResultType = RAID_RESULT.RAID_END;
         break;
       default:
-        this.raidResultType = RAID_RESULT.UNK_END;
+        this.raidResultType = RAID_RESULT.UNK;
         break;
     }
   }
@@ -110,10 +111,10 @@ export class LogNewNpc {
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
     this.id = lineSplit[2];
-    this.npcId = tryParseInt(lineSplit[3]);
+    this.npcId = tryParseNum(lineSplit[3]);
     this.name = lineSplit[4] || "Unknown Entity";
-    this.currentHp = tryParseInt(lineSplit[5]);
-    this.maxHp = tryParseInt(lineSplit[6]);
+    this.currentHp = tryParseNum(lineSplit[5]);
+    this.maxHp = tryParseNum(lineSplit[6]);
     this.type = ENTITY_TYPE.UNKNOWN;
   }
 }
@@ -171,19 +172,19 @@ export class LogDamage {
     this.timestamp = +new Date(lineSplit[1]);
     this.sourceId = lineSplit[2];
     this.sourceName = lineSplit[3] || "Unknown Entity";
-    this.skillId = tryParseInt(lineSplit[4]);
+    this.skillId = tryParseNum(lineSplit[4]);
     this.skillName = lineSplit[5] || "Unknown Skill";
-    this.skillEffectId = tryParseInt(lineSplit[6]);
+    this.skillEffectId = tryParseNum(lineSplit[6]);
     this.skillEffect = lineSplit[7];
     this.targetId = lineSplit[8];
     this.targetName = lineSplit[9] || "Unknown Entity";
-    this.damage = tryParseInt(lineSplit[10]);
+    this.damage = tryParseNum(lineSplit[10]);
     this.damageModifier = lineSplit[11] === "1";
     this.isCrit = lineSplit[12] === "1";
     this.isBackAttack = lineSplit[13] === "1";
     this.isFrontAttack = lineSplit[14] === "1";
-    this.currentHp = tryParseInt(lineSplit[15]);
-    this.maxHp = tryParseInt(lineSplit[16]);
+    this.currentHp = tryParseNum(lineSplit[15]);
+    this.maxHp = tryParseNum(lineSplit[16]);
   }
 }
 
@@ -198,8 +199,8 @@ export class LogHeal {
     this.timestamp = +new Date(lineSplit[1]);
     this.id = lineSplit[2];
     this.name = lineSplit[3] || "Unknown Entity";
-    this.healAmount = tryParseInt(lineSplit[4]);
-    this.currentHp = tryParseInt(lineSplit[5]);
+    this.healAmount = tryParseNum(lineSplit[4]);
+    this.currentHp = tryParseNum(lineSplit[5]);
   }
 }
 

@@ -1,5 +1,5 @@
 import log from "electron-log";
-import { getClassId, getClassName } from "../util/game-classes";
+import { getClassId, getClassName } from "@/util/game-classes";
 import { cloneDeep } from "lodash";
 import { EventEmitter } from "events";
 import {
@@ -23,6 +23,7 @@ import {
   Skill,
   SkillBreakdown,
   Stats,
+  tryParseNum,
 } from "@/encounters/objects";
 import { getClassIdFromSkillId } from "@/util/skills";
 import { getEntityDps, getTotalDps, saveEncounter } from "@/encounters/helpers";
@@ -41,33 +42,6 @@ export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 5;
 export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 5;
 // TODO: Time everything else out if they havent been updated in 1min
 export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 1;
-
-export const tryParseInt = (intString: string, defaultValue = 0) => {
-  let intNum;
-
-  try {
-    intNum = parseInt(intString);
-    if (isNaN(intNum)) intNum = defaultValue;
-  } catch {
-    intNum = defaultValue;
-  }
-
-  return intNum;
-};
-
-export const tryParseFloat = (intString: string, defaultValue = 0) => {
-  let intNum;
-
-  try {
-    intNum = parseFloat(intString.replaceAll(",", "."));
-    if (isNaN(intNum)) intNum = defaultValue;
-  } catch {
-    intNum = defaultValue;
-  }
-
-  return intNum;
-};
-
 export interface ActiveUser {
   id: string;
   name: string;
@@ -340,7 +314,7 @@ export class PacketParser extends EventEmitter {
       return;
     }
     try {
-      const logType = tryParseInt(lineSplit[0]);
+      const logType = tryParseNum(lineSplit[0]);
       const timestamp = +new Date(lineSplit[1]);
 
       switch (logType) {
@@ -427,6 +401,11 @@ export class PacketParser extends EventEmitter {
   // Also weirdly enough is sent when ALT+Q menu is opened
   onPhaseTransition(packet: LogPhaseTransition) {
     // Inconsistent, will need to improve once logger is more stable
+    // log.info("Phase transition", JSON.stringify(packet));
+    if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
+      log.debug("onPhaseTransition: Ignoring raid result packet");
+      return;
+    }
 
     const isPaused = this.session.paused;
     if (this.session.firstPacket === 0 || isPaused) {
@@ -439,7 +418,7 @@ export class PacketParser extends EventEmitter {
       case RAID_RESULT.RAID_END: // TODO: Probably better to call this "RAID_RESULT" since it procs on raids ending unsuccessfully
         keepEntities = true;
         break;
-      case RAID_RESULT.UNK_END:
+      // case RAID_RESULT.RAID_RESULT:
       case RAID_RESULT.GUARDIAN_DEAD:
         keepEntities = false;
         break;
@@ -495,6 +474,7 @@ export class PacketParser extends EventEmitter {
       user.maxHp = packet.maxHp;
       user.currentHp = packet.currentHp;
       user.type = ENTITY_TYPE.PLAYER;
+      user.gearLevel = packet.gearLevel;
 
       if (user.id === this.activeUser.id) {
         log.debug("onNewPc: Updating active user details");
@@ -686,7 +666,7 @@ export class PacketParser extends EventEmitter {
     if (
       (packet.skillName === "Bleed" || packet.skillId === 0) &&
       [480005, 480006, 480009, 480010, 480011, 480026, 480031, 480032].includes(
-        tryParseInt(target.npcId)
+        target.npcId
       )
     )
       return;
