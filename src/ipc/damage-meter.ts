@@ -2,8 +2,11 @@ import log from "electron-log";
 import { packetParser, win } from "@/background";
 import { ipcMain, app, shell } from "electron";
 import AppStore from "@/persistance/store";
+import { renameOldEncounters } from "@/encounters/helpers";
 
 class DamageMeterEvents {
+  public static renameTriggered: boolean;
+
   public static initialize(appStore: AppStore): void {
     ipcMain.handle("toMain", async (event, arg) => {
       if (!arg.message || typeof arg.message !== "string") {
@@ -88,6 +91,17 @@ class DamageMeterEvents {
               return err;
             }
             break;
+          case "rename-logs":
+            if (this.renameTriggered)
+              return { message: "Rename already triggered", count: 0 };
+
+            this.renameTriggered = true;
+            try {
+              const renamed = await renameOldEncounters();
+              return { message: "Renamed logs", count: renamed };
+            } catch (err) {
+              return err;
+            }
           default:
             return { error: "Invalid event" };
         }

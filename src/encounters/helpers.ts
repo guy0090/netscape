@@ -3,6 +3,7 @@ import fs from "fs";
 import log from "electron-log";
 import { Entity, ENTITY_TYPE, Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
+import glob from "glob";
 
 export const USER_HOME_DIR = os.homedir();
 export const ENCOUNTER_DIR = `${USER_HOME_DIR}\\Documents\\Netscape\\Encounters`;
@@ -30,7 +31,8 @@ export const saveEncounter = async (
 ) => {
   try {
     await encounterDirExists(true);
-    const file = `${ENCOUNTER_DIR}\\${+new Date()}_${encounter.id}`;
+    const name = getNewEncounterName(encounter);
+    const file = `${ENCOUNTER_DIR}\\${name}`;
     const data = JSON.stringify(encounter);
 
     if (debug) {
@@ -70,24 +72,84 @@ export const saveEncounter = async (
 };
 
 export const readEncounter = async (
-  id: string
-): Promise<Session | undefined> => {
+  path: string,
+  compression: "gzip" | "brotli" = "gzip"
+): Promise<Session> => {
   try {
     await encounterDirExists(true);
-    const file = `${ENCOUNTER_DIR}\\${id}.enc`;
-    const data = await fs.promises.readFile(file);
-    const uncompressed = await Gzip.decompress(data);
+    const data = await fs.promises.readFile(path);
+    const uncompressed =
+      compression === "gzip"
+        ? await Gzip.decompress(data)
+        : await Brotli.decompress(data);
     return new Session(JSON.parse(uncompressed));
   } catch (err) {
-    log.error("Error reading encounter: " + (err as Error).message);
-    return undefined;
+    log.error("Error reading encounter:", err);
+    return Promise.reject(err);
   }
 };
 
-export const getTotalDps = (log: Session) => {
-  const duration = (log.lastPacket - log.firstPacket) / 1000;
+export const getNewEncounterName = (session: Session) => {
+  const boss = session.getBoss();
+  const dateString = formatDate(
+    session.lastPacket > 0 ? session.lastPacket : undefined
+  );
+
+  if (boss) {
+    return `${boss.name}_${dateString}`;
+  } else {
+    return `UNKNOWN_${dateString}`;
+  }
+};
+
+export const formatDate = (number?: number) => {
+  if (!number) number = +new Date();
+  const date = new Date(number)
+    .toISOString()
+    .replace(/T/, "_")
+    .replace(/:/g, "-")
+    .replace(/\./, "-")
+    .replace(/Z/, "");
+
+  return date;
+};
+
+export const renameEncounter = async (oldPath: string, session: Session) => {
+  try {
+    const outPath = `${ENCOUNTER_DIR}\\${getNewEncounterName(session)}.enc`;
+    await fs.promises.rename(oldPath, outPath);
+    log.debug(`Renamed encounter ${oldPath} to ${outPath}`);
+    return true;
+  } catch (err) {
+    log.error("Error renaming encounter:", err);
+    return Promise.reject(err);
+  }
+};
+
+export const renameOldEncounters = async () => {
+  try {
+    const globDir = ENCOUNTER_DIR.replace(/\\/g, "/");
+    const encounters = glob.sync(`${globDir}/*.enc`);
+    for (const enc of encounters) {
+      let session: Session;
+      try {
+        session = await readEncounter(enc);
+      } catch {
+        session = await readEncounter(enc, "brotli");
+      }
+      await renameEncounter(enc, session);
+    }
+    return encounters.length;
+  } catch (err) {
+    log.error("Error renaming encounters:", err);
+    return Promise.reject(err);
+  }
+};
+
+export const getTotalDps = (encounter: Session) => {
+  const duration = (encounter.lastPacket - encounter.firstPacket) / 1000;
   let total = 0;
-  for (const entity of log.entities) {
+  for (const entity of encounter.entities) {
     if (entity.type !== ENTITY_TYPE.PLAYER) continue;
     total += entity.stats.damageDealt;
   }

@@ -180,6 +180,22 @@
         </v-text-field>
       </v-col>
     </v-row>
+    <v-row hidden class="mt-5" justify="space-between">
+      <v-col cols="8" class="pb-0">
+        <v-row class="mb-3"
+          ><v-icon icon="mdi-alert"></v-icon>&nbsp;Rename Log Files&nbsp;
+        </v-row>
+        <v-row class="mb-3"
+          ><small
+            >This will rename old log files to have a more human readable name.
+            <strong>WILL LAG YOU IF HAVE A LOT OF LOGS</strong></small
+          ></v-row
+        >
+      </v-col>
+      <v-col cols="auto" class="pt-0 align-self-center">
+        <v-btn color="warning">Rename</v-btn>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 

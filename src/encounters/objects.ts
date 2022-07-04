@@ -12,6 +12,7 @@ export class Session {
   public id: string;
   public paused: boolean;
   public live: boolean;
+  public protocol?: boolean;
   public firstPacket: number;
   public lastPacket: number;
   public duration?: number;
@@ -22,6 +23,7 @@ export class Session {
     id?: string;
     paused?: boolean;
     live?: boolean;
+    protocol?: boolean;
     firstPacket?: number;
     lastPacket?: number;
     duration?: number;
@@ -31,6 +33,7 @@ export class Session {
     this.id = session?.id || uuidv4();
     this.paused = session?.paused || false;
     this.live = session?.live || true;
+    this.protocol = session?.protocol || false;
     this.firstPacket = session?.firstPacket || 0;
     this.lastPacket = session?.lastPacket || 0;
     this.duration = session?.duration || 0;
@@ -70,6 +73,23 @@ export class Session {
       0
     );
     return damage / duration;
+  }
+
+  getBoss(): Entity | undefined {
+    const bosses = this.entities.filter(
+      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
+    );
+
+    let boss;
+    if (bosses.length > 1) {
+      boss = bosses.sort((a, b) => b.lastUpdate - a.lastUpdate)[0];
+    } else if (bosses.length === 1) {
+      boss = bosses[0];
+    } else {
+      boss = undefined;
+    }
+
+    return boss;
   }
 
   toSimpleObject() {

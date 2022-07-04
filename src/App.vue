@@ -308,7 +308,6 @@ export default defineComponent({
             } else if (this.session.firstPacket === 0 && this.sessionTimer) {
               this.stopSessionTimer();
             }
-
             break;
           case "end-session":
             this.debug("Got end session");
@@ -317,7 +316,7 @@ export default defineComponent({
 
             if (!this.minified) {
               this.stopMinifyTimer();
-              this.startMinifyTimer();
+              if (!message.protocol) this.startMinifyTimer();
             }
 
             if (!message.live) {
@@ -614,7 +613,6 @@ export default defineComponent({
         this.minifyDelay > 0 &&
         (!this.session.live || this.session.firstPacket === 0)
       ) {
-        this.debug("Minify delay is set, restarting minify timer on expand");
         this.stopMinifyTimer();
         this.startMinifyTimer();
       }

@@ -19,7 +19,7 @@ import { ElectronBridge } from "@/bridge/electron-bridge";
 import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
-import { Session } from "./encounters/objects";
+import { Session } from "@/encounters/objects";
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -30,7 +30,9 @@ app.setAsDefaultProtocolClient("loal");
 export const isDevelopment = process.env.NODE_ENV !== "production";
 export const gotAppLock = app.requestSingleInstanceLock();
 export const appStore = new AppStore();
-export const electronBridge = new ElectronBridge(appStore);
+
+export let electronBridge: ElectronBridge;
+export let packetParser: PacketParser;
 
 export const parserConfig: PacketParserConfig = {
   resetOnZoneChange: appStore.get("resetOnZoneChange") as boolean,
@@ -39,8 +41,6 @@ export const parserConfig: PacketParserConfig = {
   uploadLogs: appStore.get("uploadLogs") as boolean,
   openUploadInBrowser: appStore.get("openInBrowserOnUpload") as boolean,
 };
-
-export const packetParser = new PacketParser(parserConfig);
 
 export const windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow;
@@ -251,121 +251,124 @@ app.on("window-all-closed", () => {
   }
 });
 
-app.on("activate", () => {
-  // On macOS it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", async () => {
   if (!gotAppLock) {
-    dialog.showErrorBox(
-      "Error Starting",
-      "Could not start app due to a second instance being present. Close all other instances before attempting to start."
-    );
-    try {
-      packetParser.stopBroadcasting();
-      electronBridge.closeConnection();
-      clearInterval(updateInterval);
-    } catch {
-      // ignore
-    }
+    log.debug("App is already running");
     app.quit();
-  }
-
-  // Wait for connection to logger
-  electronBridge.on("ready", () => {
-    // Start processing packets
-    packetParser.startBroadcasting(200);
-    electronBridge.on("packet", (packet) => {
-      packetParser.parse(packet);
-    });
-
-    // Initialize IPC events for window context
-    DamageMeterEvents.initialize(appStore);
-
-    // Create main window
-    createWindow();
-
-    // Start packet parser events
-    packetParser.on("session-broadcast", (data: Session) => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "session",
-          message: data,
-        });
-    });
-
-    packetParser.on("raid-end", (data) => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "end-session",
-          message: data,
-        });
-    });
-
-    packetParser.on("pause-session", (data) => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "pause-session",
-          message: data,
-        });
-    });
-
-    packetParser.on("resume-session", (data) => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "resume-session",
-          message: data,
-        });
-    });
-
-    packetParser.on("reset-session", (data) => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "reset-session",
-          message: data,
-        });
-    });
-
-    packetParser.on("zone-change", () => {
-      if (win)
-        win.webContents.send("fromMain", {
-          event: "zone-change",
-          message: "",
-        });
-    });
-
-    if (windowMode === 1) {
-      log.info("Attaching overlay");
-      // Attach overlay delayed
-      setTimeout(() => {
-        initOverlay();
-      }, 1000);
-    }
-  });
-
-  electronBridge.on("disconnected", () => {
+  } else {
     try {
-      packetParser.stopBroadcasting();
-      electronBridge.closeConnection();
-      clearInterval(updateInterval);
+      electronBridge = new ElectronBridge(appStore);
+    } catch {
+      log.error("Failed to initialize electron bridge");
       app.quit();
-    } catch (err) {
-      dialog.showErrorBox(
-        "Error",
-        "Disconnected from logger process; Exiting app."
-      );
-      app.exit();
     }
-  });
+
+    // Wait for connection to logger
+    electronBridge.on("ready", () => {
+      packetParser = new PacketParser(parserConfig);
+
+      // Start processing packets
+      packetParser.startBroadcasting(200);
+      electronBridge.on("packet", (packet) => {
+        packetParser.parse(packet);
+      });
+
+      // Initialize IPC events for window context
+      DamageMeterEvents.initialize(appStore);
+
+      // Create main window
+      createWindow();
+
+      // Start packet parser events
+      packetParser.on("session-broadcast", (data: Session) => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "session",
+            message: data,
+          });
+      });
+
+      packetParser.on("raid-end", (data) => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "end-session",
+            message: data,
+          });
+      });
+
+      packetParser.on("pause-session", (data) => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "pause-session",
+            message: data,
+          });
+      });
+
+      packetParser.on("resume-session", (data) => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "resume-session",
+            message: data,
+          });
+      });
+
+      packetParser.on("reset-session", (data) => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "reset-session",
+            message: data,
+          });
+      });
+
+      packetParser.on("zone-change", () => {
+        if (win)
+          win.webContents.send("fromMain", {
+            event: "zone-change",
+            message: "",
+          });
+      });
+
+      if (windowMode === 1) {
+        log.info("Attaching overlay");
+        // Attach overlay delayed
+        setTimeout(() => {
+          initOverlay();
+        }, 1000);
+      }
+    });
+
+    electronBridge.on("disconnected", () => {
+      try {
+        packetParser.stopBroadcasting();
+        electronBridge.closeConnection();
+        clearInterval(updateInterval);
+        app.quit();
+      } catch (err) {
+        dialog.showErrorBox(
+          "Error",
+          "Disconnected from logger process; Exiting app."
+        );
+        app.exit();
+      }
+    });
+  }
 });
 
-app.on("second-instance", () => {
-  if (win) win.focus();
+app.on("second-instance", (_e, argv) => {
+  if (win) {
+    win.focus();
+
+    const encounterFile = argv.find((arg) => arg.includes(".enc"));
+    if (encounterFile) {
+      log.debug(`Loading encounter file ${encounterFile}`);
+      packetParser.readEncounterFile(encounterFile);
+    } else {
+      log.debug("No encounter file specified, doing nothing");
+    }
+  }
 });
 
 // Exit cleanly on request from parent process in development mode.

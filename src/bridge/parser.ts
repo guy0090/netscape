@@ -26,7 +26,12 @@ import {
   tryParseNum,
 } from "@/encounters/objects";
 import { getClassIdFromSkillId } from "@/util/skills";
-import { getEntityDps, getTotalDps, saveEncounter } from "@/encounters/helpers";
+import {
+  getEntityDps,
+  getTotalDps,
+  readEncounter,
+  saveEncounter,
+} from "@/encounters/helpers";
 import {
   openInBrowser,
   uploadSession,
@@ -376,7 +381,8 @@ export class PacketParser extends EventEmitter {
   onInitPc(packet: LogInitPc): void {
     this.activeUser.id = packet.id;
     this.activeUser.classId = packet.classId;
-    this.activeUser.level = packet.level;
+    this.activeUser.level =
+      packet.level > 60 || packet.level < 0 ? 0 : packet.level;
     this.activeUser.realName = packet.name;
     this.activeUser.gearLevel = packet.gearLevel;
     log.info("InitPC: Updated current user information", this.activeUser);
@@ -744,6 +750,27 @@ export class PacketParser extends EventEmitter {
     if (target) {
       target.lastUpdate = +new Date();
       target.stats.counters += 1;
+    }
+  }
+
+  async readEncounterFile(path: string) {
+    try {
+      if (this.session.firstPacket > 0) {
+        log.debug(
+          `Skipping reading encounter from file: An active session is present`
+        );
+        return false;
+      }
+
+      const enc = await readEncounter(path);
+      enc.live = false;
+      enc.protocol = true;
+
+      this.previousSession = enc;
+      this.emit("raid-end", this.previousSession);
+      return true;
+    } catch (err) {
+      log.error(`readEncounterFile failed: ${err}`);
     }
   }
 }
