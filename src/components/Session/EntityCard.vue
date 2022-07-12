@@ -27,7 +27,7 @@
                   padding-left: 4px !important;
                   padding-right: 7px !important;
                 "
-                v-if="entity?.gearLevel != 0"
+                v-if="entity?.gearLevel > 0"
               >
                 {{ entity?.gearLevel }}
               </small>

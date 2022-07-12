@@ -25,12 +25,12 @@ import {
   Stats,
   tryParseNum,
 } from "@/encounters/objects";
-import { getClassIdFromSkillId } from "@/util/skills";
 import {
   getEntityDps,
   getTotalDps,
   readEncounter,
   saveEncounter,
+  trySetClassFromSkills,
 } from "@/encounters/helpers";
 import {
   openInBrowser,
@@ -477,10 +477,7 @@ export class PacketParser extends EventEmitter {
       user.id = packet.id;
       user.class = packet.class;
       user.classId = packet.classId;
-      user.maxHp = packet.maxHp;
-      user.currentHp = packet.currentHp;
       user.type = ENTITY_TYPE.PLAYER;
-      user.gearLevel = packet.gearLevel;
 
       if (user.id === this.activeUser.id) {
         log.debug("onNewPc: Updating active user details");
@@ -555,89 +552,20 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
-    // Fallback to name if ID isn't found as a special case check
-    let source =
-      this.getEntity(packet.sourceId) ||
-      this.getEntity(packet.sourceName, true);
-    if (!source) {
-      source = new Entity({
-        id: packet.sourceId,
-        name: packet.sourceName,
-        type: ENTITY_TYPE.UNKNOWN,
-        classId: 0,
-      });
+    const source = this.getEntity(packet.sourceId);
+    const target = this.getEntity(packet.targetId);
 
-      if (packet.sourceId !== packet.sourceName) {
-        this.session.entities.push(source);
-      }
-
-      if (source.id === this.activeUser.id) {
-        log.info("[S] onDamage: Setting active user details");
-        source.name = this.activeUser.name;
-        source.level = this.activeUser.level;
-        source.gearLevel = this.activeUser.gearLevel;
-      }
-    } else {
-      const entitySkills = Object.values(source.skills);
-      if (source.classId === 0 && entitySkills.length > 0) {
-        entitySkills.every((skill) => {
-          const classId = getClassIdFromSkillId(skill.id);
-          if (classId !== 0) {
-            (source as Entity).classId = classId;
-            (source as Entity).class = getClassName(classId);
-            (source as Entity).type = ENTITY_TYPE.PLAYER;
-            log.debug(
-              `[S] onDamage: Unknown entity ${
-                (source as Entity).id
-              } was detected as class: ${(source as Entity).class}`
-            );
-            return false;
-          }
-          return true;
-        });
-      }
-
-      if (source.id === this.activeUser.id) {
-        source.name === this.activeUser.name;
-        source.gearLevel = this.activeUser.gearLevel;
-        source.level = this.activeUser.level;
-      }
-      source.lastUpdate = +new Date();
+    if (!source || !target) {
+      // log.debug(`onDamage: Source or Target entity not found: ${packet.sourceId}`);
+      return;
     }
 
-    let target =
-      this.getEntity(packet.targetId) ||
-      this.getEntity(packet.targetName, true);
-    if (!target) {
-      target = new Entity({
-        id: packet.targetId,
-        name: packet.targetName,
-        type: ENTITY_TYPE.UNKNOWN,
-        classId: 0,
-        currentHp: packet.currentHp,
-        maxHp: packet.maxHp,
-      });
+    if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
+      trySetClassFromSkills(source);
+    }
 
-      if (packet.targetId !== packet.targetName) {
-        this.session.entities.push(target);
-        this.hasBossEntity = this.hasBoss(this.session.entities);
-      }
-
-      if (target.id === this.activeUser.id) {
-        log.info("[T] onDamage: Got active user - setting details");
-        target.name = this.activeUser.name;
-        target.level = this.activeUser.level;
-        target.gearLevel = this.activeUser.gearLevel;
-      }
-    } else {
-      if (target.id === this.activeUser.id) {
-        target.name = this.activeUser.name;
-        target.gearLevel = this.activeUser.gearLevel;
-        target.level = this.activeUser.level;
-      }
-      target.currentHp = packet.currentHp;
-      target.maxHp = packet.maxHp;
-      target.lastUpdate = +new Date();
+    if (target.type === ENTITY_TYPE.PLAYER && target.classId === 0) {
+      trySetClassFromSkills(target);
     }
 
     // Only process damage events if the target is a boss
@@ -648,8 +576,13 @@ export class PacketParser extends EventEmitter {
       target.type === ENTITY_TYPE.UNKNOWN ||
       !this.hasBossEntity ||
       this.session.paused
-    )
+    ) {
       return;
+    }
+
+    target.currentHp = packet.currentHp;
+    target.maxHp = packet.maxHp;
+    target.lastUpdate = +new Date();
 
     if (
       target.type !== ENTITY_TYPE.PLAYER &&
@@ -733,23 +666,22 @@ export class PacketParser extends EventEmitter {
 
   // logId = 9
   onHeal(packet: LogHeal) {
-    const target = this.getEntity(packet.id);
+    const source = this.getEntity(packet.id);
 
-    if (target) {
-      target.lastUpdate = +new Date();
-      target.stats.healing += packet.healAmount;
+    if (source) {
+      source.lastUpdate = +new Date();
+      source.stats.healing += packet.healAmount;
     }
   }
 
   // logId = 11
   onCounter(packet: LogCounterAttack) {
-    const target =
-      this.getEntity(packet.targetId) ||
-      this.getEntity(packet.targetName, true);
+    const source =
+      this.getEntity(packet.id) || this.getEntity(packet.name, true);
 
-    if (target) {
-      target.lastUpdate = +new Date();
-      target.stats.counters += 1;
+    if (source) {
+      source.lastUpdate = +new Date();
+      source.stats.counters += 1;
     }
   }
 

@@ -1,9 +1,11 @@
 import os from "os";
 import fs from "fs";
 import log from "electron-log";
-import { Entity, ENTITY_TYPE, Session } from "./objects";
+import { Entity, ENTITY_TYPE, Session, Skill } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
 import glob from "glob";
+import { getClassName } from "@/util/game-classes";
+import { getClassIdFromSkillId } from "@/util/skills";
 
 export const USER_HOME_DIR = os.homedir();
 export const ENCOUNTER_DIR = `${USER_HOME_DIR}\\Documents\\Netscape\\Encounters`;
@@ -161,4 +163,19 @@ export const getEntityDps = (entity: Entity, begin: number, end: number) => {
   return duration > 0 && entity.stats.damageDealt > 0
     ? entity.stats.damageDealt / duration
     : 0;
+};
+
+export const trySetClassFromSkills = (player: Entity) => {
+  const skills = Object.values(player.skills);
+  skills.every((skill) => {
+    const classId = getClassIdFromSkillId(skill.id);
+    if (classId !== 0) {
+      player.classId = classId;
+      player.class = getClassName(classId);
+      player.type = ENTITY_TYPE.PLAYER;
+      player.lastUpdate = +new Date();
+      return false;
+    }
+    return true;
+  });
 };
