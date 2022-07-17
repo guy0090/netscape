@@ -391,6 +391,9 @@ export class PacketParser extends EventEmitter {
   // logId = 1 | On: Most loading screens
   onInitEnv(packet: LogInitEnv) {
     log.debug(`onInitEnv: Updating active user ID: ${packet.playerId}`);
+
+    const player = this.getEntity(this.activeUser.id);
+    if (player) player.id = packet.playerId;
     this.activeUser.id = packet.playerId;
 
     if (this.resetOnZoneChange) {
@@ -479,7 +482,7 @@ export class PacketParser extends EventEmitter {
       user.classId = packet.classId;
       user.type = ENTITY_TYPE.PLAYER;
 
-      if (user.id === this.activeUser.id) {
+      if (packet.id === this.activeUser.id) {
         log.debug("onNewPc: Updating active user details");
         user.name = this.activeUser.name;
         user.level = this.activeUser.level;

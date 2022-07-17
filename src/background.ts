@@ -16,6 +16,7 @@ import { autoUpdater } from "electron-updater";
 import { overlayWindow } from "electron-overlay-window";
 // import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 import { ElectronBridge } from "@/bridge/electron-bridge";
+import { HttpBridge } from "@/bridge/http-bridge";
 import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
@@ -31,6 +32,7 @@ export const isDevelopment = process.env.NODE_ENV !== "production";
 export const gotAppLock = app.requestSingleInstanceLock();
 export const appStore = new AppStore();
 
+export let httpBridge: HttpBridge;
 export let electronBridge: ElectronBridge;
 export let packetParser: PacketParser;
 
@@ -61,7 +63,8 @@ function setupTray() {
       click() {
         try {
           packetParser.stopBroadcasting();
-          electronBridge.closeConnection();
+          httpBridge.stop();
+          // electronBridge.closeConnection();
           clearInterval(updateInterval);
         } catch {
           // ignore
@@ -242,7 +245,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     try {
       packetParser.stopBroadcasting();
-      electronBridge.closeConnection();
+      httpBridge.stop();
+      // electronBridge.closeConnection();
       clearInterval(updateInterval);
     } catch {
       // ignore
@@ -260,20 +264,37 @@ app.on("ready", async () => {
     app.quit();
   } else {
     try {
-      electronBridge = new ElectronBridge(appStore);
-    } catch {
-      log.error("Failed to initialize electron bridge");
+      // electronBridge = new ElectronBridge(appStore);
+      httpBridge = new HttpBridge(appStore);
+    } catch (err) {
+      log.error("Failed to initialize electron bridge", err);
       app.quit();
     }
 
     // Wait for connection to logger
-    electronBridge.on("ready", () => {
+    // electronBridge.on("ready", () => {
+    httpBridge.on("listen", () => {
       packetParser = new PacketParser(parserConfig);
 
       // Start processing packets
       packetParser.startBroadcasting(200);
-      electronBridge.on("packet", (packet) => {
+      // electronBridge.on("packet", (packet) => {
+      httpBridge.on("packet", (packet) => {
         packetParser.parse(packet);
+      });
+
+      httpBridge.on("close", () => {
+        try {
+          packetParser.stopBroadcasting();
+          clearInterval(updateInterval);
+          app.quit();
+        } catch (err) {
+          dialog.showErrorBox(
+            "Error",
+            "Disconnected from logger process; Exiting app."
+          );
+          app.exit();
+        }
       });
 
       // Initialize IPC events for window context
@@ -340,6 +361,7 @@ app.on("ready", async () => {
       }
     });
 
+    /*
     electronBridge.on("disconnected", () => {
       try {
         packetParser.stopBroadcasting();
@@ -354,6 +376,7 @@ app.on("ready", async () => {
         app.exit();
       }
     });
+    */
   }
 });
 
@@ -377,7 +400,9 @@ if (isDevelopment) {
     process.on("message", (data) => {
       if (data === "graceful-exit") {
         packetParser.stopBroadcasting();
-        electronBridge.closeConnection();
+        // electronBridge.closeConnection();
+        httpBridge.stop();
+        clearInterval(updateInterval);
         clearInterval(updateInterval);
         app.quit();
       }
@@ -385,7 +410,8 @@ if (isDevelopment) {
   } else {
     process.on("SIGTERM", () => {
       packetParser.stopBroadcasting();
-      electronBridge.closeConnection();
+      // electronBridge.closeConnection();
+      httpBridge.stop();
       clearInterval(updateInterval);
       app.quit();
     });
