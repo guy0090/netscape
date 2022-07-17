@@ -586,6 +586,7 @@ export class PacketParser extends EventEmitter {
     target.currentHp = packet.currentHp;
     target.maxHp = packet.maxHp;
     target.lastUpdate = +new Date();
+    source.lastUpdate = +new Date();
 
     if (
       target.type !== ENTITY_TYPE.PLAYER &&
