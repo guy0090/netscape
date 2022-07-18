@@ -45,8 +45,8 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 5;
 // TODO: Time bosses out if they havent been updated in 5min
 export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 5;
-// TODO: Time everything else out if they havent been updated in 1min
-export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 1;
+// TODO: Time everything else out if they havent been updated in 5min
+export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 5;
 export interface ActiveUser {
   id: string;
   name: string;
@@ -167,24 +167,15 @@ export class PacketParser extends EventEmitter {
   resetEntities(entities: Entity[]): Entity[] {
     const reset: Entity[] = [];
     for (const entity of entities) {
-      let timeout = DEFAULT_ENTITY_TIMEOUT;
-      switch (entity.type) {
-        case ENTITY_TYPE.PLAYER:
-          timeout = PLAYER_ENTITY_TIMEOUT;
-          break;
-        case ENTITY_TYPE.BOSS:
-        case ENTITY_TYPE.GUARDIAN:
-          timeout = BOSS_ENTITY_TIMEOUT;
-          break;
-      }
+      const timeout = DEFAULT_ENTITY_TIMEOUT;
 
       if (+new Date() - entity.lastUpdate > timeout) {
         log.debug(`Expiring timed out entity: ${entity.id}:${entity.name}`);
         continue;
       }
 
-      if (entity.currentHp <= 0) {
-        log.debug(`Expiring dead entity: ${entity.id}:${entity.name}`);
+      if (entity.type !== ENTITY_TYPE.PLAYER && entity.currentHp <= 0) {
+        log.debug(`Expiring boss/monster entity: ${entity.id}:${entity.name}`);
         continue;
       }
 
@@ -209,12 +200,12 @@ export class PacketParser extends EventEmitter {
     return reset;
   }
 
-  resetSession(keepEntities = true, timeout = 2000, upload = true): void {
-    log.info(`Resetting session | keepEntities: ${keepEntities}`);
+  resetSession(timeout = 2000, upload = true): void {
+    log.info("Resetting session");
     if (this.resetTimer) return;
 
-    if (this.hasBoss(this.session.entities, false)) {
-      const clone = cloneDeep(this.session);
+    const clone = cloneDeep(this.session);
+    if (this.hasBoss(clone.entities, false)) {
       clone.cleanEntities();
 
       clone.damageStatistics.dps = getTotalDps(clone);
@@ -243,14 +234,8 @@ export class PacketParser extends EventEmitter {
     }
 
     this.resetTimer = setTimeout(() => {
-      if (keepEntities) {
-        const resetEntities = this.resetEntities(
-          cloneDeep(this.session.entities)
-        );
-        this.session = new Session({ entities: resetEntities });
-      } else {
-        this.session = new Session();
-      }
+      const resetEntities = this.resetEntities(clone.entities);
+      this.session = new Session({ entities: resetEntities });
 
       this.hasBossEntity = this.hasBoss(this.session.entities);
       this.resetTimer = undefined;
@@ -395,15 +380,6 @@ export class PacketParser extends EventEmitter {
     const player = this.getEntity(this.activeUser.id);
     if (player) player.id = packet.playerId;
     this.activeUser.id = packet.playerId;
-
-    if (this.resetOnZoneChange) {
-      if (this.resetTimer) {
-        clearTimeout(this.resetTimer);
-        this.resetTimer = undefined;
-      }
-
-      this.resetSession(true, 0, false);
-    }
   }
 
   // logId = 2 | On: Any encounter (with a boss?) ending, wiping or transitioning phases
@@ -422,20 +398,6 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
-    let keepEntities: boolean;
-    switch (packet.raidResultType) {
-      case RAID_RESULT.RAID_END: // TODO: Probably better to call this "RAID_RESULT" since it procs on raids ending unsuccessfully
-        keepEntities = true;
-        break;
-      // case RAID_RESULT.RAID_RESULT:
-      case RAID_RESULT.GUARDIAN_DEAD:
-        keepEntities = false;
-        break;
-      default:
-        keepEntities = false;
-        break;
-    }
-
     // Delay firing of event to allow for last damage packet to be processed
     // Phase packet is sent before/simulatenously with the last damage packet
     setTimeout(() => {
@@ -445,9 +407,9 @@ export class PacketParser extends EventEmitter {
       this.previousSession = cloneDeep(this.session);
       this.previousSession.live = false;
 
-      this.resetSession(keepEntities, 0, this.uploadLogs);
+      this.resetSession(0, this.uploadLogs);
       this.emit("raid-end", this.previousSession);
-    }, 100);
+    }, 50);
   }
 
   // logId = 3 | On: A new player character is found (can be the user if the meter was started after a loading screen)
@@ -509,6 +471,7 @@ export class PacketParser extends EventEmitter {
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
       npc.name = packet.name;
+      npc.id = packet.id;
     } else {
       npc = new Entity(packet);
       // Only persist Boss-type NPCs
@@ -571,7 +534,7 @@ export class PacketParser extends EventEmitter {
       trySetClassFromSkills(target);
     }
 
-    // Only process damage events if the target is a boss
+    // Only process damage events if the target is a boss or player
     // Only process damage events if a boss is present in session
     // Don't count damage if session is paused
     if (
@@ -585,6 +548,7 @@ export class PacketParser extends EventEmitter {
 
     target.currentHp = packet.currentHp;
     target.maxHp = packet.maxHp;
+
     target.lastUpdate = +new Date();
     source.lastUpdate = +new Date();
 
@@ -604,6 +568,18 @@ export class PacketParser extends EventEmitter {
       );
     }
     const activeSkill: Skill = source.skills[packet.skillId];
+
+    /*
+    if (
+      source.type === ENTITY_TYPE.PLAYER &&
+      packet.skillId === 0 &&
+      packet.skillEffectId !== 0
+    ) {
+      log.info(
+        `onDamage: Unknown skill with effect: ${packet.skillEffectId}:${packet.skillEffect}`
+      );
+    }
+    */
 
     // Test removing broken damage from Valtan Gate 1 fight
     if (

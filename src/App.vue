@@ -3,7 +3,7 @@
     <v-system-bar class="ps-1">
       <v-avatar
         class="meter-logo"
-        :image="require(`@/assets/sprites/emojis/34.webp`)"
+        :image="require(`@/assets/sprites/emojis/28.webp`)"
       ></v-avatar>
       <span class="draggable">&nbsp;v{{ version }} {{ getBossTitle() }}</span>
       <v-col class="draggable"></v-col>

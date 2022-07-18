@@ -42,8 +42,8 @@ class DamageMeterEvents {
             log.info("Client requested session reset");
             packetParser.resetPrevious();
 
-            if (arg.force) packetParser.resetSession(false, 0, false);
-            else packetParser.resetSession(true, 0, false);
+            if (arg.force) packetParser.resetSession(0, false);
+            else packetParser.resetSession(0, false);
             break;
           case "pause-session":
             log.info("Client requested session pause");
