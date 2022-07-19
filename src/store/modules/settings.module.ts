@@ -36,6 +36,18 @@ export const settings: Module<any, any> = {
         return err;
       }
     },
+    async setHpBarColor({ dispatch }, hpBarColor) {
+      await dispatch("updateSetting", {
+        key: "hpBarColor",
+        value: hpBarColor,
+      });
+    },
+    async setModifyHpBar({ dispatch }, modifyHpBar) {
+      await dispatch("updateSetting", {
+        key: "hpBarClickable",
+        value: modifyHpBar,
+      });
+    },
     async setCompactStyle({ commit, dispatch }, compactStyle) {
       await dispatch("updateSetting", {
         key: "compactStyle",

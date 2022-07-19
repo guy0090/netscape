@@ -1,6 +1,6 @@
 <template style="height: 100%">
   <boss-status
-    v-if="isGuardianFight()"
+    v-if="isGuardianFight() && !session?.live"
     :boss="getGuardianEntity()"
   ></boss-status>
   <div class="entities" v-if="getUserEntities().length > 0">
@@ -45,8 +45,8 @@
 </template>
 
 <script lang="ts">
-import { Entity, ENTITY_TYPE } from "@/encounters/objects";
-import { defineComponent } from "vue";
+import { Entity, ENTITY_TYPE, Session } from "@/encounters/objects";
+import { defineComponent, PropType } from "vue";
 import { useStore, mapActions } from "vuex";
 import BossStatus from "./Session/BossStatus.vue";
 import EntityCard from "./Session/EntityCard.vue";
@@ -60,7 +60,7 @@ export default defineComponent({
 
   props: {
     compact: Boolean || false,
-    session: Object || {},
+    session: (Object as PropType<Session>) || {},
     sessionDuration: Number,
     isPaused: Boolean || false,
     pausedFor: Number || 0,

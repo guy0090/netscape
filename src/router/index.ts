@@ -1,4 +1,9 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from "vue-router";
+
+// Pages
+import Meter from "@/pages/Meter.vue";
+import HPBar from "@/pages/HPBar.vue";
+
 import SessionView from "@/views/SessionView.vue";
 import BreakdownPage from "@/views/BreakdownView.vue";
 import SettingsPage from "@/views/SettingsView.vue";
@@ -6,18 +11,34 @@ import SettingsPage from "@/views/SettingsView.vue";
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    name: "session",
-    component: SessionView,
+    redirect: "/meter",
   },
   {
-    path: "/breakdown/:entityId",
-    name: "breakdown",
-    component: BreakdownPage,
+    path: "/meter",
+    name: "meter",
+    component: Meter,
+    children: [
+      {
+        path: "",
+        name: "session",
+        component: SessionView,
+      },
+      {
+        path: "breakdown/:entityId",
+        name: "breakdown",
+        component: BreakdownPage,
+      },
+      {
+        path: "settings",
+        name: "settings",
+        component: SettingsPage,
+      },
+    ],
   },
   {
-    path: "/settings",
-    name: "settings",
-    component: SettingsPage,
+    path: "/hpbar",
+    name: "hpbar",
+    component: HPBar,
   },
 ];
 

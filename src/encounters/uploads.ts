@@ -17,9 +17,9 @@ export const DATA_INTERVAL = ms("5s");
 export const UPLOAD_ENDPOINT = "/logs/upload";
 export const RECENT_ENDPOINT = "/logs/recents";
 
-export const uploadSession = async (session: Session) => {
+export const uploadSession = async (appStore: AppStore, session: Session) => {
   try {
-    const uploadKey = await AppStore.getPassword();
+    const uploadKey = await appStore.getPassword();
 
     const bosses = session.entities.filter(
       (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN

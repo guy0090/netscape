@@ -26,14 +26,14 @@ class DamageMeterEvents {
             };
           case "set-api-key":
             try {
-              await AppStore.setPassword(arg.value);
+              appStore.setPassword(arg.value);
               return { message: "set-api-key" };
             } catch (err) {
               return { message: "set-api-key", error: err };
             }
           case "get-api-key":
             try {
-              const pw = await AppStore.getPassword();
+              const pw = await appStore.getPassword();
               return { event: "get-api-key", message: { value: pw } };
             } catch (err) {
               return { message: "get-api-key", error: err };

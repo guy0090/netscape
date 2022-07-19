@@ -48,6 +48,40 @@ const storeSchema: Schema<Record<string, unknown>> = {
       height: 614,
     },
   },
+  hpBarPosition: {
+    type: "object",
+    properties: {
+      x: {
+        type: "number",
+        default: 0,
+      },
+      y: {
+        type: "number",
+        default: 100,
+      },
+    },
+    default: {
+      x: 0,
+      y: 100,
+    },
+  },
+  hpBarDimensions: {
+    type: "object",
+    properties: {
+      width: {
+        type: "number",
+        default: 600,
+      },
+      height: {
+        type: "number",
+        default: 40,
+      },
+    },
+    default: {
+      width: 600,
+      height: 40,
+    },
+  },
   anonymizeMeter: {
     type: "boolean",
     default: false,
@@ -100,6 +134,18 @@ const storeSchema: Schema<Record<string, unknown>> = {
     default: 0, // in milliseconds
     type: "number",
   },
+  hpBarColor: {
+    type: "string",
+    default: "#b71c1c",
+  },
+  hpBarClickable: {
+    type: "boolean",
+    default: false,
+  },
+  uploadKey: {
+    type: "string",
+    default: "",
+  },
 };
 
 class AppStore extends EventEmitter {
@@ -128,14 +174,9 @@ class AppStore extends EventEmitter {
     return this.store.get(setting);
   }
 
-  static async setPassword(
-    password: string,
-    service = this.keytarApiKeyService,
-    account = this.keytarAccount
-  ) {
+  async setPassword(password: string) {
     try {
-      if (password) await keytar.setPassword(service, account, password);
-      else await keytar.deletePassword(service, account);
+      this.store.set("uploadKey", password);
 
       return true;
     } catch {
@@ -144,12 +185,16 @@ class AppStore extends EventEmitter {
     }
   }
 
-  static async getPassword(
-    service = this.keytarApiKeyService,
-    account = this.keytarAccount
-  ) {
+  async getPassword() {
     try {
-      const pw = await keytar.getPassword(service, account);
+      let pw = this.store.get("uploadKey") as string | null;
+      if (!pw || pw === "") {
+        pw = await keytar.getPassword(
+          AppStore.keytarApiKeyService,
+          AppStore.keytarAccount
+        );
+      }
+
       return pw;
     } catch {
       console.error("Failed to get password");

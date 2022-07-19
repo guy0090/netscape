@@ -38,6 +38,8 @@ import {
   validateUpload,
 } from "@/encounters/uploads";
 import { abyssRaids, guardians, raidBosses } from "@/util/supported-bosses";
+import AppStore from "@/persistance/store";
+import { app } from "electron";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -77,8 +79,9 @@ export class PacketParser extends EventEmitter {
   private hasBossEntity: boolean;
   private previousSession: Session | undefined;
   private activeUser: ActiveUser;
+  private appStore: AppStore;
 
-  constructor(config: PacketParserConfig = {}) {
+  constructor(appStore: AppStore, config: PacketParserConfig = {}) {
     // Extend
     super();
 
@@ -98,7 +101,7 @@ export class PacketParser extends EventEmitter {
       level: 1,
       gearLevel: 0,
     };
-
+    this.appStore = appStore;
     // Init
     this.session = new Session();
 
@@ -221,7 +224,7 @@ export class PacketParser extends EventEmitter {
       const isSessionValid = validateUpload(clone);
       if (upload && isSessionValid) {
         log.info("Uploading encounter");
-        uploadSession(clone)
+        uploadSession(this.appStore, clone)
           .then((d) => {
             const uploadedId = d.id;
             log.info("Uploaded encounter", uploadedId);
@@ -409,6 +412,7 @@ export class PacketParser extends EventEmitter {
 
       this.resetSession(0, this.uploadLogs);
       this.emit("raid-end", this.previousSession);
+      this.emit("hide-hp", []);
     }, 50);
   }
 
@@ -638,9 +642,25 @@ export class PacketParser extends EventEmitter {
       );
     }
 
+    const boss = this.getBoss();
+
     if (this.session.firstPacket === 0) {
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
+
+      if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
+        log.debug("Showing HP bar on encounter start");
+        this.emit("show-hp", {
+          bars: 1,
+          currentHp: boss.currentHp,
+          maxHp: boss.maxHp,
+          bossName: boss.name,
+        });
+      }
+    }
+
+    if (target.id === boss?.id) {
+      this.emit("boss-damaged", { damageDealt: packet.damage });
     }
   }
 

@@ -6,6 +6,7 @@ import ms from "ms";
 import {
   app,
   dialog,
+  screen,
   protocol,
   Tray,
   Menu,
@@ -46,6 +47,7 @@ export const parserConfig: PacketParserConfig = {
 
 export const windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow;
+export let hpBarWin: BrowserWindow;
 export let attached = false;
 export let tray: Tray;
 export let updateInterval: ReturnType<typeof setInterval> | undefined;
@@ -121,11 +123,11 @@ async function createWindow() {
     };
   }
 
-  const { width, height } = appStore.get("meterDimensions") as Record<
-    string,
-    number
-  >;
-  const { x, y } = appStore.get("meterPosition") as Record<string, number>;
+  const { width, height } = appStore.get("meterDimensions") as {
+    width: number;
+    height: number;
+  };
+  const { x, y } = appStore.get("meterPosition") as { x: number; y: number };
 
   win = new BrowserWindow({
     maxWidth: 900,
@@ -197,6 +199,88 @@ async function createWindow() {
         log.error("Update check failed", err);
       }
     }, ms("10m")); // 10min checks
+  }
+}
+
+async function createHpBar(screenWidth: number) {
+  const { height, width } = appStore.get("hpBarDimensions") as {
+    height: number;
+    width: number;
+  };
+
+  const pos = appStore.get("hpBarPosition") as { x: number; y: number };
+
+  if (pos.x === 0) pos.x = screenWidth / 2 - width / 2;
+
+  hpBarWin = new BrowserWindow({
+    minWidth: 500,
+    minHeight: 40,
+    width,
+    height,
+    x: pos.x,
+    y: pos.y,
+    skipTaskbar: false,
+    frame: false,
+    show: false,
+    transparent: true,
+    webPreferences: {
+      nodeIntegration: process.env
+        .ELECTRON_NODE_INTEGRATION as unknown as boolean,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+  hpBarWin.setAlwaysOnTop(true, "pop-up-menu");
+
+  hpBarWin.on("resized", () => {
+    log.debug("resized hpbar", hpBarWin.getBounds());
+    const { width, height, x, y } = hpBarWin.getBounds();
+
+    if (height > 61) {
+      appStore.set("hpBarDimensions", { width, height });
+      appStore.set("hpBarPosition", { x, y });
+    }
+  });
+
+  hpBarWin.on("moved", () => {
+    log.debug("moved hpbar", hpBarWin.getBounds());
+    const { width, height, x, y } = hpBarWin.getBounds();
+
+    appStore.set("hpBarDimensions", { width, height });
+    appStore.set("hpBarPosition", { x, y });
+  });
+
+  hpBarWin.setIgnoreMouseEvents(true);
+  appStore.on("change", ({ setting, value }) => {
+    if (setting === "hpBarColor") {
+      if (hpBarWin)
+        hpBarWin.webContents.send("fromMain", {
+          event: "new-setting",
+          message: { setting, value },
+        });
+    } else if (setting === "hpBarClickable") {
+      if (value) {
+        hpBarWin.show();
+        hpBarWin.setIgnoreMouseEvents(false);
+      } else {
+        // hpBarWin.hide();
+        hpBarWin.setIgnoreMouseEvents(true);
+      }
+    }
+  });
+
+  if (process.env.WEBPACK_DEV_SERVER_URL) {
+    // Load the url of the dev server if in development mode
+    await hpBarWin.loadURL(
+      (process.env.WEBPACK_DEV_SERVER_URL as string) + "#/hpbar"
+    );
+    if (!process.env.IS_TEST)
+      hpBarWin.webContents.openDevTools({ mode: "detach", activate: false });
+  } else {
+    // createProtocol("app");
+    // Load the index.html when not in development
+    // win.loadURL("app://./index.html");
+    hpBarWin.loadURL(`file://${__dirname}/index.html#/hpbar`);
+    // win.webContents.openDevTools({ mode: "detach", activate: false });
   }
 }
 
@@ -274,7 +358,7 @@ app.on("ready", async () => {
     // Wait for connection to logger
     // electronBridge.on("ready", () => {
     httpBridge.on("listen", () => {
-      packetParser = new PacketParser(parserConfig);
+      packetParser = new PacketParser(appStore, parserConfig);
 
       // Start processing packets
       packetParser.startBroadcasting(200);
@@ -300,8 +384,11 @@ app.on("ready", async () => {
       // Initialize IPC events for window context
       DamageMeterEvents.initialize(appStore);
 
+      const { width } = screen.getPrimaryDisplay().size;
+
       // Create main window
       createWindow();
+      createHpBar(width);
 
       // Start packet parser events
       packetParser.on("session-broadcast", (data: Session) => {
@@ -318,6 +405,40 @@ app.on("ready", async () => {
             event: "end-session",
             message: data,
           });
+      });
+
+      packetParser.on("show-hp", (data) => {
+        if (hpBarWin) {
+          if (hpBarWin.isMinimized() || !hpBarWin.isVisible()) {
+            hpBarWin.show();
+          }
+
+          hpBarWin.webContents.send("fromMain", {
+            event: "init-enc",
+            message: data,
+          });
+        }
+      });
+
+      packetParser.on("boss-damaged", (data) => {
+        if (hpBarWin) {
+          hpBarWin.webContents.send("fromMain", {
+            event: "boss-damaged",
+            message: data,
+          });
+        }
+      });
+
+      packetParser.on("hide-hp", () => {
+        const beingModified = appStore.get("hpBarClickable") as boolean;
+        if (hpBarWin && !beingModified) {
+          // hpBarWin.minimize();
+          hpBarWin.hide();
+
+          hpBarWin.webContents.send("fromMain", {
+            event: "end-enc",
+          });
+        }
       });
 
       packetParser.on("pause-session", (data) => {

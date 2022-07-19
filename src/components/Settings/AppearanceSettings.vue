@@ -6,13 +6,13 @@
     >
     <v-row>
       <v-col>
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-eye-outline"></v-icon>&nbsp;Window Opacity</v-row
         >
         <v-row class="mb-3"
           ><small>Adjusts the transparency of the app window.</small></v-row
         >
-        <v-row class="mb-0 pb-0">
+        <v-row class="mb-5 pb-0">
           <v-slider
             v-model="opacity"
             :min="0.4"
@@ -20,6 +20,7 @@
             :step="0.01"
             color="green-accent-4"
             label="color"
+            hide-details
           >
             <template v-slot:append>
               <v-text-field
@@ -35,9 +36,50 @@
               ></v-text-field> </template
           ></v-slider>
         </v-row>
+        <v-row class="mb-5" align="center">
+          <v-col cols="auto">
+            <v-row class="mb-3">
+              <v-icon icon="mdi-hospital-box"></v-icon>
+              &nbsp;Modify HP Bar
+            </v-row>
+            <v-row>
+              <small>Toggle to enable resizing/moving of HP bar.</small>
+            </v-row>
+          </v-col>
+          <v-spacer></v-spacer>
+          <v-col class="mb-0 pb-0 pt-0 mt-0" cols="auto">
+            <v-switch
+              v-model="modifyHpBar"
+              :label="modifyHpBar ? 'Editing' : 'Off'"
+              color="green-accent-4"
+              hide-details
+              @change="handleHpBarModifyChange"
+            ></v-switch>
+          </v-col>
+        </v-row>
+        <v-row class="mb-4" align="center">
+          <v-col cols="12">
+            <v-row class="mb-3">
+              <v-icon icon="mdi-palette"></v-icon>
+              &nbsp;HP Bar Color
+            </v-row>
+            <v-row>
+              <small>Changes the color of the HP bar.</small>
+            </v-row>
+            <v-row class="mt-5" justify="center">
+              <v-col cols="auto">
+                <v-color-picker
+                  v-model="hpBarColor"
+                  hide-canvas
+                  v-on:update:model-value="handleHpBarColorChange"
+                ></v-color-picker>
+              </v-col>
+            </v-row>
+          </v-col>
+        </v-row>
         <v-row class="mb-0" align="center">
           <v-col cols="auto">
-            <v-row class="mb-2">
+            <v-row class="mb-3">
               <v-icon v-if="compact" icon="mdi-view-compact"></v-icon>
               <v-icon v-else icon="mdi-view-compact-outline"></v-icon>
               &nbsp;Compact Design
@@ -131,6 +173,8 @@ export default defineComponent({
     ...mapActions([
       "setOpacity",
       "setCompactStyle",
+      "setHpBarColor",
+      "setModifyHpBar",
       "getSetting",
       "debug",
       "error",
@@ -158,6 +202,22 @@ export default defineComponent({
         .catch((err: Error) => {
           this.error(err);
         });
+
+      this.getSetting("hpBarColor")
+        .then((d: { message: { value: string } }) => {
+          this.hpBarColor = d.message.value;
+        })
+        .catch((err: Error) => {
+          this.error(err);
+        });
+
+      this.getSetting("hpBarClickable")
+        .then((d: { message: { value: boolean } }) => {
+          this.modifyHpBar = d.message.value;
+        })
+        .catch((err: Error) => {
+          this.error(err);
+        });
     },
     listenForChanges() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -174,6 +234,12 @@ export default defineComponent({
           }
         }
       });
+    },
+    handleHpBarColorChange() {
+      this.setHpBarColor(this.hpBarColor);
+    },
+    handleHpBarModifyChange() {
+      this.setModifyHpBar(this.modifyHpBar);
     },
     handleCompactChange() {
       this.setCompactStyle(this.compact);
@@ -195,8 +261,10 @@ export default defineComponent({
   },
 
   setup() {
-    let opacity = ref();
-    let compact = ref(false);
+    const opacity = ref();
+    const compact = ref(false);
+    const hpBarColor = ref("red-darken-3");
+    const modifyHpBar = ref(false);
     const fakeEntities = ref([
       {
         lastUpdate: 0,
@@ -975,6 +1043,8 @@ export default defineComponent({
     return {
       opacity,
       compact,
+      hpBarColor,
+      modifyHpBar,
       fakeEntities,
     };
   },

@@ -6,7 +6,7 @@
 import { defineComponent } from "vue";
 
 // Components
-import SessionPage from "../components/Session.vue";
+import SessionPage from "@/components/Session.vue";
 
 export default defineComponent({
   name: "SessionView",
