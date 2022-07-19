@@ -46,8 +46,8 @@ export const parserConfig: PacketParserConfig = {
 };
 
 export const windowMode = appStore.get("windowMode") as number;
-export let win: BrowserWindow;
-export let hpBarWin: BrowserWindow;
+export let win: BrowserWindow | undefined;
+export let hpBarWin: BrowserWindow | undefined;
 export let attached = false;
 export let tray: Tray;
 export let updateInterval: ReturnType<typeof setInterval> | undefined;
@@ -158,6 +158,8 @@ async function createWindow() {
   }
 
   win.on("resized", () => {
+    if (!win) return;
+
     log.debug("resized", win.getBounds());
     const { width, height, x, y } = win.getBounds();
 
@@ -169,6 +171,8 @@ async function createWindow() {
   });
 
   win.on("moved", () => {
+    if (!win) return;
+
     log.debug("moved", win.getBounds());
     const { width, height, x, y } = win.getBounds();
 
@@ -177,6 +181,12 @@ async function createWindow() {
       appStore.set("meterDimensions", { width, height });
       appStore.set("meterPosition", { x, y });
     }
+  });
+
+  win.on("close", () => {
+    packetParser?.stopBroadcasting();
+    httpBridge?.stop();
+    hpBarWin?.destroy();
   });
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -203,6 +213,8 @@ async function createWindow() {
 }
 
 async function createHpBar(screenWidth: number) {
+  if (hpBarWin) return;
+
   const { height, width } = appStore.get("hpBarDimensions") as {
     height: number;
     width: number;
@@ -232,6 +244,8 @@ async function createHpBar(screenWidth: number) {
   hpBarWin.setAlwaysOnTop(true, "pop-up-menu");
 
   hpBarWin.on("resized", () => {
+    if (!hpBarWin) return;
+
     log.debug("resized hpbar", hpBarWin.getBounds());
     const { width, height, x, y } = hpBarWin.getBounds();
 
@@ -242,6 +256,8 @@ async function createHpBar(screenWidth: number) {
   });
 
   hpBarWin.on("moved", () => {
+    if (!hpBarWin) return;
+
     log.debug("moved hpbar", hpBarWin.getBounds());
     const { width, height, x, y } = hpBarWin.getBounds();
 
@@ -249,21 +265,26 @@ async function createHpBar(screenWidth: number) {
     appStore.set("hpBarPosition", { x, y });
   });
 
+  hpBarWin.on("closed", () => {
+    hpBarWin = undefined;
+  });
+
   hpBarWin.setIgnoreMouseEvents(true);
-  appStore.on("change", ({ setting, value }) => {
+  appStore.on("change", async ({ setting, value }) => {
+    if (!hpBarWin) await createHpBar(screenWidth);
+
     if (setting === "hpBarColor") {
-      if (hpBarWin)
-        hpBarWin.webContents.send("fromMain", {
-          event: "new-setting",
-          message: { setting, value },
-        });
+      hpBarWin?.webContents.send("fromMain", {
+        event: "new-setting",
+        message: { setting, value },
+      });
     } else if (setting === "hpBarClickable") {
       if (value) {
-        hpBarWin.show();
-        hpBarWin.setIgnoreMouseEvents(false);
+        hpBarWin?.show();
+        hpBarWin?.setIgnoreMouseEvents(false);
       } else {
         // hpBarWin.hide();
-        hpBarWin.setIgnoreMouseEvents(true);
+        hpBarWin?.setIgnoreMouseEvents(true);
       }
     }
   });
@@ -285,6 +306,8 @@ async function createHpBar(screenWidth: number) {
 }
 
 function initOverlay() {
+  if (!win) return;
+
   const { width, height } = appStore.get("meterDimensions") as Record<
     string,
     number
@@ -307,15 +330,15 @@ function makeInteractive() {
 
   function toggleOverlayState() {
     if (isInteractable) {
-      win.setIgnoreMouseEvents(true);
+      win?.setIgnoreMouseEvents(true);
       isInteractable = false;
       overlayWindow.focusTarget();
-      win.webContents.send("focus-change", false);
+      win?.webContents.send("focus-change", false);
     } else {
-      win.setIgnoreMouseEvents(false);
+      win?.setIgnoreMouseEvents(false);
       isInteractable = true;
       overlayWindow.activateOverlay();
-      win.webContents.send("focus-change", true);
+      win?.webContents.send("focus-change", true);
     }
   }
 
@@ -407,17 +430,16 @@ app.on("ready", async () => {
           });
       });
 
-      packetParser.on("show-hp", (data) => {
-        if (hpBarWin) {
-          if (hpBarWin.isMinimized() || !hpBarWin.isVisible()) {
-            hpBarWin.show();
-          }
+      packetParser.on("show-hp", async (data) => {
+        if (!hpBarWin) await createHpBar(width);
 
-          hpBarWin.webContents.send("fromMain", {
-            event: "init-enc",
-            message: data,
-          });
+        if (hpBarWin?.isMinimized() || !hpBarWin?.isVisible()) {
+          hpBarWin?.show();
         }
+        hpBarWin?.webContents.send("fromMain", {
+          event: "init-enc",
+          message: data,
+        });
       });
 
       packetParser.on("boss-damaged", (data) => {

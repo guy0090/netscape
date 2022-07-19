@@ -62,6 +62,7 @@ class DamageMeterEvents {
             if (arg.url) shell.openExternal(arg.url);
             break;
           case "toggle-mini":
+            if (!win) return;
             try {
               const val = arg.mini;
               if (val) {
