@@ -9,22 +9,23 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { Entity } from "@/encounters/objects";
+import { defineComponent, PropType } from "vue";
 
 export default defineComponent({
   name: "BossStatus",
 
   props: {
-    boss: Object,
+    boss: Object as PropType<Entity>,
   },
 
   methods: {
     getBossStatus() {
       // const bossName: number = this.boss?.name;
-      const bossMaxHP: number = this.boss?.maxHp;
-      const bossCurrentHP: number = this.boss?.currentHp;
-      const overkill: boolean = bossCurrentHP < 0;
-      let percentHp: number = (bossCurrentHP / bossMaxHP) * 100;
+      const bossMaxHP = this.boss?.maxHp as number;
+      const bossCurrentHP = this.boss?.currentHp as number;
+      const overkill = bossCurrentHP < 0;
+      let percentHp = (bossCurrentHP / bossMaxHP) * 100;
       let status = `${bossCurrentHP}/${bossMaxHP} (${percentHp.toFixed(2)}%)`;
       if (overkill) {
         status = `${0} (${bossCurrentHP})/${bossMaxHP} (0%)`;

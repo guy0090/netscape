@@ -140,11 +140,11 @@ export class Entity {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(entity: Record<string, any>) {
     this.lastUpdate = entity.lastUpdate || +new Date();
-    this.id = entity.id;
+    this.id = entity.id || 0;
     this.npcId = tryParseNum(entity.npcId);
-    this.name = entity.name;
-    this.type = entity.type;
-    this.class = entity.class;
+    this.name = entity.name || "Unknown User";
+    this.type = entity.type || ENTITY_TYPE.UNKNOWN;
+    this.class = entity.class || "Unknown Class";
     this.classId = entity.classId || 0;
     this.level = entity.level || 0;
     this.gearLevel = entity.gearLevel || 0;

@@ -68,6 +68,7 @@ export default defineComponent({
     const currentBars = ref(1);
     const maxHp = ref(1);
     const currentHp = ref(1);
+    const lastHp = ref(1);
     const currentBarPercent = ref(100);
     const currentBarHp = ref(0);
     const bossName = ref("");
@@ -80,6 +81,7 @@ export default defineComponent({
       currentBars,
       maxHp,
       currentHp,
+      lastHp,
       currentBarPercent,
       currentBarHp,
       bossName,
@@ -99,6 +101,8 @@ export default defineComponent({
     },
     getCurrentBarPercent(damageDealt: number) {
       this.currentHp -= damageDealt;
+      this.lastHp = this.currentHp;
+
       const diff = this.currentBarHp - damageDealt;
       this.currentBarHp -= damageDealt;
 
@@ -165,8 +169,9 @@ export default defineComponent({
           this.bars = bars;
           this.currentBars = bars;
 
-          this.currentHp = currentHp;
           this.maxHp = maxHp;
+          this.currentHp = currentHp;
+          this.lastHp = maxHp;
           this.bossName = bossName;
 
           this.barSize = this.maxHp / this.bars;
@@ -174,7 +179,8 @@ export default defineComponent({
         } else if (event === "end-enc") {
           this.resetBar();
         } else if (event === "boss-damaged") {
-          const { damageDealt } = message;
+          const { currentHp } = message;
+          const damageDealt = this.lastHp - currentHp;
 
           this.getCurrentBarPercent(damageDealt);
         }

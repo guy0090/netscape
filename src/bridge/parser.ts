@@ -39,16 +39,15 @@ import {
 } from "@/encounters/uploads";
 import { abyssRaids, guardians, raidBosses } from "@/util/supported-bosses";
 import AppStore from "@/persistance/store";
-import { app } from "electron";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-// TODO: Time player out if they havent been updated in 5min
-export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 5;
-// TODO: Time bosses out if they havent been updated in 5min
-export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 5;
-// TODO: Time everything else out if they havent been updated in 5min
-export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 5;
+// TODO: Time player out if they havent been updated in 25min
+export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 25;
+// TODO: Time bosses out if they havent been updated in 25min
+export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 25;
+// TODO: Time everything else out if they havent been updated in 30min
+export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 30;
 export interface ActiveUser {
   id: string;
   name: string;
@@ -457,8 +456,6 @@ export class PacketParser extends EventEmitter {
 
       user.lastUpdate = +new Date();
     }
-
-    this.emit("new-pc", user);
   }
 
   // logId = 4 | On: A new non-player character is found
@@ -475,17 +472,27 @@ export class PacketParser extends EventEmitter {
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
       npc.name = packet.name;
-      npc.id = packet.id;
+      npc.lastUpdate = +new Date();
     } else {
       npc = new Entity(packet);
       // Only persist Boss-type NPCs
-      if (npc.type === ENTITY_TYPE.BOSS || npc.type === ENTITY_TYPE.GUARDIAN) {
+      if (isBoss || isGuardian) {
         this.session.entities.push(npc);
       }
     }
 
     this.hasBossEntity = this.hasBoss(this.session.entities);
-    this.emit("new-npc", npc);
+
+    const boss = this.getBoss();
+    if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
+      log.debug(`onNewPc: Showing HP bar for boss: ${boss.name}`);
+      this.emit("show-hp", {
+        bars: 1,
+        currentHp: boss.currentHp,
+        maxHp: boss.maxHp,
+        bossName: boss.name,
+      });
+    }
   }
 
   // logId = 5 | On: Death of any NPC or PC
@@ -522,13 +529,12 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
-    const source = this.getEntity(packet.sourceId);
-    const target = this.getEntity(packet.targetId);
+    let source = this.getEntity(packet.sourceId);
+    if (!source)
+      source = new Entity({ id: packet.sourceId, name: "Unknown Entity" });
 
-    if (!source || !target) {
-      // log.debug(`onDamage: Source or Target entity not found: ${packet.sourceId}`);
-      return;
-    }
+    const target = this.getEntity(packet.targetId);
+    if (!target) return;
 
     if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
       trySetClassFromSkills(source);
@@ -573,17 +579,15 @@ export class PacketParser extends EventEmitter {
     }
     const activeSkill: Skill = source.skills[packet.skillId];
 
-    /*
     if (
       source.type === ENTITY_TYPE.PLAYER &&
       packet.skillId === 0 &&
       packet.skillEffectId !== 0
     ) {
       log.info(
-        `onDamage: Unknown skill with effect: ${packet.skillEffectId}:${packet.skillEffect}`
+        `onDamage: ${source.id}:${source.name} => Unknown skill with effect: ${packet.skillEffectId}:${packet.skillEffect}`
       );
     }
-    */
 
     // Test removing broken damage from Valtan Gate 1 fight
     if (
@@ -643,24 +647,16 @@ export class PacketParser extends EventEmitter {
     }
 
     const boss = this.getBoss();
-
     if (this.session.firstPacket === 0) {
+      log.debug("Starting session with boss: " + boss?.name);
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
-
-      if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
-        log.debug("Showing HP bar on encounter start");
-        this.emit("show-hp", {
-          bars: 1,
-          currentHp: boss.currentHp,
-          maxHp: boss.maxHp,
-          bossName: boss.name,
-        });
-      }
     }
 
     if (target.id === boss?.id) {
-      this.emit("boss-damaged", { damageDealt: packet.damage });
+      this.emit("boss-damaged", {
+        currentHp: boss.currentHp,
+      });
     }
   }
 
