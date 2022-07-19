@@ -177,7 +177,9 @@ export class PacketParser extends EventEmitter {
       }
 
       if (entity.type !== ENTITY_TYPE.PLAYER && entity.currentHp <= 0) {
-        log.debug(`Expiring boss/monster entity: ${entity.id}:${entity.name}`);
+        log.debug(
+          `Expiring dead boss/monster entity: ${entity.id}:${entity.name}`
+        );
         continue;
       }
 
@@ -482,17 +484,6 @@ export class PacketParser extends EventEmitter {
     }
 
     this.hasBossEntity = this.hasBoss(this.session.entities);
-
-    const boss = this.getBoss();
-    if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
-      log.debug(`onNewPc: Showing HP bar for boss: ${boss.name}`);
-      this.emit("show-hp", {
-        bars: 1,
-        currentHp: boss.currentHp,
-        maxHp: boss.maxHp,
-        bossName: boss.name,
-      });
-    }
   }
 
   // logId = 5 | On: Death of any NPC or PC
@@ -651,6 +642,16 @@ export class PacketParser extends EventEmitter {
       log.debug("Starting session with boss: " + boss?.name);
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
+
+      if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
+        log.debug(`onNewPc: Showing HP bar for boss: ${boss.name}`);
+        this.emit("show-hp", {
+          bars: 1,
+          currentHp: boss.currentHp,
+          maxHp: boss.maxHp,
+          bossName: boss.name,
+        });
+      }
     }
 
     if (target.id === boss?.id) {
