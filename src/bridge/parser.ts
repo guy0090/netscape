@@ -204,12 +204,12 @@ export class PacketParser extends EventEmitter {
     return reset;
   }
 
-  resetSession(timeout = 2000, upload = true): void {
+  resetSession(timeout = 2000, upload = true, previous = false): void {
     log.info("Resetting session");
     if (this.resetTimer) return;
 
     const clone = cloneDeep(this.session);
-    if (this.hasBoss(clone.entities, false)) {
+    if (!previous && this.hasBoss(clone.entities, false)) {
       clone.cleanEntities();
 
       clone.damageStatistics.dps = getTotalDps(clone);
@@ -390,11 +390,12 @@ export class PacketParser extends EventEmitter {
   // Also weirdly enough is sent when ALT+Q menu is opened
   onPhaseTransition(packet: LogPhaseTransition) {
     // Inconsistent, will need to improve once logger is more stable
-    // log.info("Phase transition", JSON.stringify(packet));
-    if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
-      log.debug("onPhaseTransition: Ignoring raid result packet");
-      return;
-    }
+    log.info("Phase transition", JSON.stringify(packet));
+    // TODO: temporarily disabled due packets
+    // if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
+    //   log.debug("onPhaseTransition: Ignoring raid result packet");
+    //   return;
+    // }
 
     const isPaused = this.session.paused;
     if (this.session.firstPacket === 0 || isPaused) {
@@ -411,7 +412,7 @@ export class PacketParser extends EventEmitter {
       this.previousSession = cloneDeep(this.session);
       this.previousSession.live = false;
 
-      this.resetSession(0, this.uploadLogs);
+      this.resetSession(200, this.uploadLogs);
       this.emit("raid-end", this.previousSession);
       this.emit("hide-hp", []);
     }, 50);

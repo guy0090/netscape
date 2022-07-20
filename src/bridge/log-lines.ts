@@ -73,7 +73,6 @@ export class LogPhaseTransition {
     this.timestamp = +new Date(lineSplit[1]);
     const type = tryParseNum(lineSplit[2]);
 
-    log.debug("PhaseLine", lineSplit);
     switch (type) {
       case 0:
         this.raidResultType = RAID_RESULT.RAID_RESULT;
