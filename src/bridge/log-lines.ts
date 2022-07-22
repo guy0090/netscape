@@ -1,4 +1,3 @@
-import log from "electron-log";
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { tryParseNum } from "@/encounters/objects";
 import { ENTITY_TYPE } from "@/encounters/objects";

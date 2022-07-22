@@ -1,4 +1,4 @@
-import log from "electron-log";
+import { logger } from "@/util/logging";
 import { packetParser, win } from "@/background";
 import { ipcMain, app, shell } from "electron";
 import AppStore from "@/persistance/store";
@@ -39,18 +39,18 @@ class DamageMeterEvents {
               return { message: "get-api-key", error: err };
             }
           case "reset-session":
-            log.info("Client requested session reset");
+            logger.debug("Client requested session reset");
             packetParser.resetPrevious();
 
             if (arg.force) packetParser.resetSession(100, false, true);
             else packetParser.resetSession(100, false, true);
             break;
           case "pause-session":
-            log.info("Client requested session pause");
+            logger.debug("Client requested session pause");
             packetParser.pauseSession();
             break;
           case "resume-session":
-            log.info("Client requested session resume");
+            logger.debug("Client requested session resume");
             packetParser.resumeSession();
             break;
           case "version":

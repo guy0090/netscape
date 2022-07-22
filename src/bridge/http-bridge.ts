@@ -1,7 +1,7 @@
 import AppStore from "@/persistance/store";
 import { createServer, Server } from "http";
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
-import log from "electron-log";
+import { logger } from "@/util/logging";
 import { EventEmitter } from "events";
 import path from "path";
 import { app } from "electron";
@@ -36,7 +36,7 @@ export class HttpBridge extends EventEmitter {
     this.httpServer = createServer((req, res) => {
       const isHostValid = this.checkHost(req.headers.host);
       if (!isHostValid) {
-        log.info("Request from invalid host: " + req.headers.host);
+        logger.error("Request Invalid Host", { host: req.headers.host });
         res.writeHead(403, { "Content-Type": "text/html" });
         return res.end("Forbidden");
       }
@@ -62,9 +62,7 @@ export class HttpBridge extends EventEmitter {
     this.httpServer.listen(this.port, "localhost", () => {
       const addr = this.httpServer?.address() as AddressInfo;
 
-      log.info(
-        `Server listening on ${addr.family}:${addr.address}:${addr.port}`
-      );
+      logger.info("Server Listening", addr);
       this.validHosts.push(`localhost:${addr.port}`, `127.0.0.1:${addr.port}`);
       this.emit("listen");
       this.spawnPacketCapturer(appStore);
@@ -93,19 +91,17 @@ export class HttpBridge extends EventEmitter {
 
       this.lostArkLogger = spawn(binaryFile, args);
     } catch (e) {
-      log.error("Error while trying to open packet capturer: " + e);
-
-      log.info("Exiting app...");
+      logger.error("Error while trying to open packet capturer", e);
+      logger.error("Exiting app...");
       app.exit();
     }
 
     this.lostArkLogger?.on("exit", function (code, signal) {
-      log.error(
+      logger.error(
         `The connection to the Lost Ark Packet Capture was lost for some reason:\n
         Code: ${code} and Signal: ${signal}`
       );
-
-      log.info("Exiting app...");
+      logger.error("Exiting app...");
       app.exit();
     });
   }
@@ -114,7 +110,7 @@ export class HttpBridge extends EventEmitter {
     try {
       this.httpServer?.close();
     } catch (e) {
-      log.error("Error while trying to stop http bridge: " + e);
+      logger.error("Error while trying to stop http bridge", e);
     }
   }
 }

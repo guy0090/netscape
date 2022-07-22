@@ -1,7 +1,7 @@
 "use strict";
 
 import path from "path";
-import log from "electron-log";
+import { logger } from "@/util/logging";
 import ms from "ms";
 import {
   app,
@@ -160,7 +160,7 @@ async function createWindow() {
   win.on("resized", () => {
     if (!win) return;
 
-    log.debug("resized", win.getBounds());
+    logger.debug("Resized", win.getBounds());
     const { width, height, x, y } = win.getBounds();
 
     // Don't change dimension settings on minify
@@ -173,7 +173,7 @@ async function createWindow() {
   win.on("moved", () => {
     if (!win) return;
 
-    log.debug("moved", win.getBounds());
+    logger.debug("Moved", win.getBounds());
     const { width, height, x, y } = win.getBounds();
 
     // Don't change dimension settings on minify
@@ -187,6 +187,8 @@ async function createWindow() {
     packetParser?.stopBroadcasting();
     httpBridge?.stop();
     hpBarWin?.destroy();
+
+    app.quit();
   });
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -204,9 +206,11 @@ async function createWindow() {
     autoUpdater.checkForUpdatesAndNotify();
     setInterval(() => {
       try {
-        autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.checkForUpdatesAndNotify().catch((e) => {
+          logger.error("Failed to check for updates", e);
+        });
       } catch (err) {
-        log.error("Update check failed", err);
+        logger.error(`Unknown error during update check`, err);
       }
     }, ms("10m")); // 10min checks
   }
@@ -246,7 +250,7 @@ async function createHpBar(screenWidth: number) {
   hpBarWin.on("resized", () => {
     if (!hpBarWin) return;
 
-    log.debug("resized hpbar", hpBarWin.getBounds());
+    logger.debug("Resized HP Bar", hpBarWin.getBounds());
     const { width, height, x, y } = hpBarWin.getBounds();
 
     if (height > 61) {
@@ -258,7 +262,7 @@ async function createHpBar(screenWidth: number) {
   hpBarWin.on("moved", () => {
     if (!hpBarWin) return;
 
-    log.debug("moved hpbar", hpBarWin.getBounds());
+    logger.debug("Moved HP Bar", hpBarWin.getBounds());
     const { width, height, x, y } = hpBarWin.getBounds();
 
     appStore.set("hpBarDimensions", { width, height });
@@ -320,7 +324,7 @@ function initOverlay() {
 
   overlayWindow.on("attach", () => {
     attached = true;
-    log.info(`Overlay attached`);
+    logger.info("Overlay attached");
     overlayWindow.emit("moveresize", { x, y, width, height });
   });
 }
@@ -367,14 +371,14 @@ app.on("window-all-closed", () => {
 // Some APIs can only be used after this event occurs.
 app.on("ready", async () => {
   if (!gotAppLock) {
-    log.debug("App is already running");
+    logger.error("App is already running");
     app.quit();
   } else {
     try {
       // electronBridge = new ElectronBridge(appStore);
       httpBridge = new HttpBridge(appStore);
     } catch (err) {
-      log.error("Failed to initialize electron bridge", err);
+      logger.error("Failed to initialize electron bridge", err);
       app.quit();
     }
 
@@ -496,7 +500,7 @@ app.on("ready", async () => {
       });
 
       if (windowMode === 1) {
-        log.info("Attaching overlay");
+        logger.debug("Attaching overlay");
         // Attach overlay delayed
         setTimeout(() => {
           initOverlay();
@@ -529,10 +533,10 @@ app.on("second-instance", (_e, argv) => {
 
     const encounterFile = argv.find((arg) => arg.includes(".enc"));
     if (encounterFile) {
-      log.debug(`Loading encounter file ${encounterFile}`);
+      logger.debug(`Loading encounter file ${encounterFile}`);
       packetParser.readEncounterFile(encounterFile);
     } else {
-      log.debug("No encounter file specified, doing nothing");
+      logger.debug("No encounter file specified, doing nothing");
     }
   }
 });

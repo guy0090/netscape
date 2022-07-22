@@ -1,7 +1,7 @@
 import os from "os";
 import fs from "fs";
-import log from "electron-log";
-import { Entity, ENTITY_TYPE, Session, Skill } from "./objects";
+import { logger } from "@/util/logging";
+import { Entity, ENTITY_TYPE, Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
 import glob from "glob";
 import { getClassName } from "@/util/game-classes";
@@ -43,7 +43,7 @@ export const saveEncounter = async (
         compressWith === "gzip"
           ? await Gzip.compressString(data)
           : await Brotli.compressString(data);
-      log.debug(
+      logger.debug(
         `Compressed (${compressWith}) ${data.length} bytes to ${
           compressed.length
         } bytes in ${new Date().getTime() - now.getTime()}ms`
@@ -56,7 +56,7 @@ export const saveEncounter = async (
         compressWith === "gzip"
           ? await Gzip.compressString(data)
           : await Brotli.compressString(data);
-      log.debug(
+      logger.debug(
         `Compressed (${compressWith}) ${data.length} bytes to ${
           compressed.length
         } bytes in ${new Date().getTime() - now.getTime()}ms`
@@ -65,10 +65,10 @@ export const saveEncounter = async (
     } else {
       await fs.promises.writeFile(file + ".json", data);
     }
-    log.info(`Saved encounter to ${file}`);
+    logger.info(`Saved encounter to ${file}`);
     return true;
   } catch (err) {
-    log.error("Error saving encounter: " + (err as Error).message);
+    logger.error("Error saving encounter", err);
     return false;
   }
 };
@@ -86,7 +86,7 @@ export const readEncounter = async (
         : await Brotli.decompress(data);
     return new Session(JSON.parse(uncompressed));
   } catch (err) {
-    log.error("Error reading encounter:", err);
+    logger.error("Error reading encounter", err);
     return Promise.reject(err);
   }
 };
@@ -120,10 +120,10 @@ export const renameEncounter = async (oldPath: string, session: Session) => {
   try {
     const outPath = `${ENCOUNTER_DIR}\\${getNewEncounterName(session)}.enc`;
     await fs.promises.rename(oldPath, outPath);
-    log.debug(`Renamed encounter ${oldPath} to ${outPath}`);
+    logger.debug(`Renamed encounter ${oldPath} to ${outPath}`);
     return true;
   } catch (err) {
-    log.error("Error renaming encounter:", err);
+    logger.error("Error renaming encounter", err);
     return Promise.reject(err);
   }
 };
@@ -143,7 +143,7 @@ export const renameOldEncounters = async () => {
     }
     return encounters.length;
   } catch (err) {
-    log.error("Error renaming encounters:", err);
+    logger.error("Error renaming encounters", err);
     return Promise.reject(err);
   }
 };

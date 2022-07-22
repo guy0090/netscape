@@ -1,4 +1,4 @@
-import log from "electron-log";
+import { logger } from "@/util/logging";
 import ms from "ms";
 import {
   ENTITY_TYPE,
@@ -65,14 +65,14 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
     );
     return response.data;
   } catch (err) {
-    log.error((err as Error).message);
+    logger.error("Error during log upload", err);
     throw err;
   }
 };
 
 export const validateUpload = (session: Session) => {
   if (session.firstPacket <= 0 || session.lastPacket <= 0) {
-    log.info("Validating upload failed: session duration is invalid");
+    logger.debug("Validating upload failed: session duration is invalid");
     return false;
   }
 
@@ -87,20 +87,22 @@ export const validateUpload = (session: Session) => {
 
   const hasBoss = bossEntities.length > 0;
   if (!hasBoss) {
-    log.info("Validating upload failed: no boss found");
+    logger.debug("Validating upload failed: no boss found");
     return false;
   }
 
   const hasPlayers = playerEntities.length > 0;
   if (!hasPlayers) {
-    log.info("Validating upload failed: no players found");
+    logger.debug("Validating upload failed: no players found");
     return false;
   }
 
   const allPlayersHaveSkills = playerEntities.every((e) => e.skills);
 
   if (!allPlayersHaveSkills) {
-    log.info("Validating upload failed: one or more players have no skills");
+    logger.debug(
+      "Validating upload failed: one or more players have no skills"
+    );
     return false;
   }
 
@@ -109,14 +111,14 @@ export const validateUpload = (session: Session) => {
   )[0];
 
   if (mostRecentDamaged.lastUpdate + 1000 * 60 * 10 < +new Date()) {
-    log.info(
+    logger.debug(
       "Validating upload failed: boss was not damaged in last 10 minutes"
     );
     return false;
   }
 
   if (mostRecentDamaged.currentHp > 0) {
-    log.info(
+    logger.debug(
       "Validating upload failed: boss is still alive (possibly a wipe?)"
     );
     return false;

@@ -1,9 +1,8 @@
-import log from "electron-log";
+import { logger } from "@/util/logging";
 import { getClassId, getClassName } from "@/util/game-classes";
 import { cloneDeep } from "lodash";
 import { EventEmitter } from "events";
 import {
-  RAID_RESULT,
   LINE_SPLIT_CHAR,
   LogHeal,
   LogDeath,
@@ -172,14 +171,18 @@ export class PacketParser extends EventEmitter {
       const timeout = DEFAULT_ENTITY_TIMEOUT;
 
       if (+new Date() - entity.lastUpdate > timeout) {
-        log.debug(`Expiring timed out entity: ${entity.id}:${entity.name}`);
+        logger.parser("Expiring timed out entity", {
+          id: entity.id,
+          name: entity.name,
+        });
         continue;
       }
 
       if (entity.type !== ENTITY_TYPE.PLAYER && entity.currentHp <= 0) {
-        log.debug(
-          `Expiring dead boss/monster entity: ${entity.id}:${entity.name}`
-        );
+        logger.parser("Expiring dead boss/monster entity", {
+          id: entity.id,
+          name: entity.name,
+        });
         continue;
       }
 
@@ -187,9 +190,10 @@ export class PacketParser extends EventEmitter {
         entity.type === ENTITY_TYPE.MONSTER ||
         entity.type === ENTITY_TYPE.UNKNOWN
       ) {
-        log.debug(
-          `Expiring unknown/monster entity: ${entity.id}:${entity.name}`
-        );
+        logger.parser("Expiring unknown/monster entity", {
+          id: entity.id,
+          name: entity.name,
+        });
         continue;
       }
 
@@ -205,7 +209,7 @@ export class PacketParser extends EventEmitter {
   }
 
   resetSession(timeout = 2000, upload = true, previous = false): void {
-    log.info("Resetting session");
+    logger.parser("Resetting session", { timeout, upload, previous });
     if (this.resetTimer) return;
 
     const clone = cloneDeep(this.session);
@@ -217,22 +221,22 @@ export class PacketParser extends EventEmitter {
         e.stats.dps = getEntityDps(e, clone.firstPacket, clone.lastPacket);
       });
 
-      log.info("Boss is present; Saving encounter");
+      logger.parser("Boss is present; Saving encounter");
       saveEncounter(clone, true, "gzip", isDevelopment).catch((err) => {
-        log.error("Failed to save encounter", err);
+        logger.error("Failed to save encounter", err);
       });
 
       const isSessionValid = validateUpload(clone);
       if (upload && isSessionValid) {
-        log.info("Uploading encounter");
+        logger.parser("Uploading encounter");
         uploadSession(this.appStore, clone)
           .then((d) => {
             const uploadedId = d.id;
-            log.info("Uploaded encounter", uploadedId);
+            logger.parser("Uploaded encounter", { uploadedId });
             if (this.openUploadInBrowser) openInBrowser(uploadedId);
           })
           .catch((err) => {
-            log.error("Failed to upload session", err.message);
+            logger.error("Failed to upload session", err);
           });
       }
     }
@@ -244,7 +248,7 @@ export class PacketParser extends EventEmitter {
       this.hasBossEntity = this.hasBoss(this.session.entities);
       this.resetTimer = undefined;
 
-      log.debug("Reset session");
+      logger.parser("Reset session", this.session.entities);
       this.emit("reset-session", this.session.toSimpleObject());
     }, timeout);
   }
@@ -254,13 +258,13 @@ export class PacketParser extends EventEmitter {
   }
 
   pauseSession() {
-    log.debug("Pausing session");
+    logger.debug("Pausing session");
     this.session.paused = true;
     this.emit("pause-session", this.session.toSimpleObject());
   }
 
   resumeSession() {
-    log.debug("Resuming session");
+    logger.debug("Resuming session");
     this.session.paused = false;
     this.emit("resume-session", this.session.toSimpleObject());
   }
@@ -298,13 +302,13 @@ export class PacketParser extends EventEmitter {
 
   parse(line: string) {
     if (!line) {
-      log.warn("Empty line");
+      logger.warn("Empty line");
       return;
     }
 
     const lineSplit = line.trim().split(LINE_SPLIT_CHAR);
     if (lineSplit.length < 1 || !lineSplit[0]) {
-      log.warn(`Invalid line: ${lineSplit}`);
+      logger.warn(`Invalid line: ${lineSplit}`);
       return;
     }
     try {
@@ -357,29 +361,30 @@ export class PacketParser extends EventEmitter {
       if (!this.session.paused) this.session.lastPacket = timestamp;
       // this.broadcastSessionChange();
     } catch (err) {
-      log.error(`Failed to parse log line: ${(err as Error).message}`);
+      logger.error(`Failed to parse log line: ${(err as Error).message}`);
     }
   }
 
   // logId = -1
   onMessage(packet: LogMessage): void {
-    log.info(`Received message: ${packet.message}`);
+    logger.info("onMessage", packet);
   }
 
   // logId = 0
   onInitPc(packet: LogInitPc): void {
+    logger.parser("onInitPc", packet);
+
     this.activeUser.id = packet.id;
     this.activeUser.classId = packet.classId;
     this.activeUser.level =
       packet.level > 60 || packet.level < 0 ? 0 : packet.level;
     this.activeUser.realName = packet.name;
     this.activeUser.gearLevel = packet.gearLevel;
-    log.info("InitPC: Updated current user information", this.activeUser);
   }
 
   // logId = 1 | On: Most loading screens
   onInitEnv(packet: LogInitEnv) {
-    log.debug(`onInitEnv: Updating active user ID: ${packet.playerId}`);
+    logger.parser("Changing zone", packet);
 
     const player = this.getEntity(this.activeUser.id);
     if (player) player.id = packet.playerId;
@@ -390,29 +395,34 @@ export class PacketParser extends EventEmitter {
   // Also weirdly enough is sent when ALT+Q menu is opened
   onPhaseTransition(packet: LogPhaseTransition) {
     // Inconsistent, will need to improve once logger is more stable
-    log.info("Phase transition", JSON.stringify(packet));
-    // TODO: temporarily disabled due packets
-    // if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
-    //   log.debug("onPhaseTransition: Ignoring raid result packet");
-    //   return;
-    // }
+    logger.parser("Phase transition", packet);
+    /** TODO: temporarily disabled due to packets
+    if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
+      logger.debug("onPhaseTransition: Ignoring raid result packet");
+      return;
+    }
+    */
 
     const isPaused = this.session.paused;
     if (this.session.firstPacket === 0 || isPaused) {
-      log.debug("Encounter hasn't started; Skipping reset");
+      logger.parser("Encounter hasn't started; Skipping reset");
       return;
     }
 
-    // Delay firing of event to allow for last damage packet to be processed
-    // Phase packet is sent before/simulatenously with the last damage packet
     setTimeout(() => {
+      const boss = this.getBoss();
+      logger.parser("Encounter ending", { ...boss, skills: {} });
+
+      // Set the current boss as dead if last damage packet is missing
+      if (boss && boss.currentHp > 0) boss.currentHp = -1;
+
       this.session.paused = true;
 
       // Set the previous session to keep in window until a new one begins
       this.previousSession = cloneDeep(this.session);
       this.previousSession.live = false;
 
-      this.resetSession(200, this.uploadLogs);
+      this.resetSession(0, this.uploadLogs);
       this.emit("raid-end", this.previousSession);
       this.emit("hide-hp", []);
     }, 50);
@@ -421,7 +431,7 @@ export class PacketParser extends EventEmitter {
   // logId = 3 | On: A new player character is found (can be the user if the meter was started after a loading screen)
   onNewPc(packet: LogNewPc) {
     if (packet.id === packet.name) {
-      log.debug(
+      logger.parser(
         `New PC identifier (${packet.id}) and name (${packet.name}) are equal, skipping`
       );
       return;
@@ -429,6 +439,7 @@ export class PacketParser extends EventEmitter {
 
     let user = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (!user) {
+      logger.parser(`onNewPc: New user found`, packet);
       user = new Entity(packet);
       if (user.classId === 0) {
         user.classId = getClassId(user.class);
@@ -436,25 +447,28 @@ export class PacketParser extends EventEmitter {
       }
 
       if (user.id === this.activeUser.id) {
-        log.debug("onNewPc: Setting active user details");
         user.name = this.activeUser.name; // this.activeUser.realName;
         user.level = this.activeUser.level;
         user.gearLevel = this.activeUser.gearLevel;
+        logger.parser("onNewPc: Set active user details", user);
       }
 
       this.session.entities.push(user);
     } else {
-      log.debug(`onNewPc: Updating existing PC ${packet.id}:${packet.name}`);
+      logger.parser("onNewPc: Updating existing PC", {
+        id: user.id,
+        name: user.name,
+      });
       user.id = packet.id;
       user.class = packet.class;
       user.classId = packet.classId;
       user.type = ENTITY_TYPE.PLAYER;
 
       if (packet.id === this.activeUser.id) {
-        log.debug("onNewPc: Updating active user details");
         user.name = this.activeUser.name;
         user.level = this.activeUser.level;
         user.gearLevel = this.activeUser.gearLevel;
+        logger.parser("onNewPc: Updated active user details", user);
       }
 
       user.lastUpdate = +new Date();
@@ -490,7 +504,6 @@ export class PacketParser extends EventEmitter {
   // logId = 5 | On: Death of any NPC or PC
   onDeath(packet: LogDeath) {
     const target = this.getEntity(packet.id);
-
     const skipFilter = [ENTITY_TYPE.GUARDIAN, ENTITY_TYPE.BOSS];
 
     if (target && !skipFilter.includes(target.type)) {
@@ -517,7 +530,7 @@ export class PacketParser extends EventEmitter {
   // logId = 8 | On: Any damage event
   onDamage(packet: LogDamage) {
     if (Object.keys(packet).length < 16) {
-      log.warn(`onDamage is too short: ${JSON.stringify(packet)}`);
+      logger.warn(`onDamage is too short: ${JSON.stringify(packet)}`);
       return;
     }
 
@@ -571,15 +584,17 @@ export class PacketParser extends EventEmitter {
     }
     const activeSkill: Skill = source.skills[packet.skillId];
 
+    /*
     if (
       source.type === ENTITY_TYPE.PLAYER &&
       packet.skillId === 0 &&
       packet.skillEffectId !== 0
     ) {
-      log.info(
+      logger.parser(
         `onDamage: ${source.id}:${source.name} => Unknown skill with effect: ${packet.skillEffectId}:${packet.skillEffect}`
       );
     }
+    */
 
     // Test removing broken damage from Valtan Gate 1 fight
     if (
@@ -640,12 +655,12 @@ export class PacketParser extends EventEmitter {
 
     const boss = this.getBoss();
     if (this.session.firstPacket === 0) {
-      log.debug("Starting session with boss: " + boss?.name);
+      logger.parser(`Starting session with boss: ${boss?.name}`, boss);
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
 
       if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
-        log.debug(`onNewPc: Showing HP bar for boss: ${boss.name}`);
+        logger.parser(`Showing HP bar for boss: ${boss.name}`, boss);
         this.emit("show-hp", {
           bars: 1,
           currentHp: boss.currentHp,
@@ -686,7 +701,7 @@ export class PacketParser extends EventEmitter {
   async readEncounterFile(path: string) {
     try {
       if (this.session.firstPacket > 0) {
-        log.debug(
+        logger.debug(
           `Skipping reading encounter from file: An active session is present`
         );
         return false;
@@ -700,7 +715,7 @@ export class PacketParser extends EventEmitter {
       this.emit("raid-end", this.previousSession);
       return true;
     } catch (err) {
-      log.error(`readEncounterFile failed: ${err}`);
+      logger.error(`readEncounterFile failed: ${err}`);
     }
   }
 }
