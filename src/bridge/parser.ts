@@ -410,12 +410,7 @@ export class PacketParser extends EventEmitter {
     }
 
     setTimeout(() => {
-      const boss = this.getBoss();
-      logger.parser("Encounter ending", { ...boss, skills: {} });
-
-      // Set the current boss as dead if last damage packet is missing
-      if (boss && boss.currentHp > 0) boss.currentHp = -1;
-
+      logger.parser("Encounter ending", { ...this.getBoss(), skills: {} });
       this.session.paused = true;
 
       // Set the previous session to keep in window until a new one begins

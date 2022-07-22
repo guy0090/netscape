@@ -50,7 +50,7 @@ export class Session {
   ) {
     if (entityFilter) {
       this.entities = this.entities.filter((e) =>
-        entityFilter?.includes(e.type)
+        entityFilter.includes(e.type)
       );
     }
 
