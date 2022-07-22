@@ -10,6 +10,7 @@ import AppStore from "@/persistance/store";
 // import AppStore from "@/persistance/store";
 import axios from "axios";
 import { shell } from "electron";
+import { cloneDeep } from "lodash";
 export const UPLOAD_URL = process.env.VUE_APP_UPLOAD_URL;
 export const SITE_URL = process.env.VUE_APP_LOGS_URL;
 
@@ -18,6 +19,7 @@ export const UPLOAD_ENDPOINT = "/logs/upload";
 export const RECENT_ENDPOINT = "/logs/recents";
 
 export const uploadSession = async (appStore: AppStore, session: Session) => {
+  session = cloneDeep(session);
   try {
     const uploadKey = await appStore.getPassword();
 
@@ -71,6 +73,8 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
 };
 
 export const validateUpload = (session: Session) => {
+  session = cloneDeep(session);
+
   if (session.firstPacket <= 0 || session.lastPacket <= 0) {
     logger.debug("Validating upload failed: session duration is invalid");
     return false;

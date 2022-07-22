@@ -242,7 +242,8 @@ export class PacketParser extends EventEmitter {
     }
 
     this.resetTimer = setTimeout(() => {
-      const resetEntities = this.resetEntities(clone.entities);
+      const entities = cloneDeep(this.session).entities;
+      const resetEntities = this.resetEntities(entities);
       this.session = new Session({ entities: resetEntities });
 
       this.hasBossEntity = this.hasBoss(this.session.entities);
@@ -427,7 +428,8 @@ export class PacketParser extends EventEmitter {
   onNewPc(packet: LogNewPc) {
     if (packet.id === packet.name) {
       logger.parser(
-        `New PC identifier (${packet.id}) and name (${packet.name}) are equal, skipping`
+        `New PC identifier (${packet.id}) and name (${packet.name}) are equal, skipping`,
+        packet
       );
       return;
     }
@@ -530,19 +532,10 @@ export class PacketParser extends EventEmitter {
     }
 
     let source = this.getEntity(packet.sourceId);
-    if (!source)
-      source = new Entity({ id: packet.sourceId, name: "Unknown Entity" });
+    if (!source) source = new Entity({ id: packet.sourceId });
 
     const target = this.getEntity(packet.targetId);
     if (!target) return;
-
-    if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
-      trySetClassFromSkills(source);
-    }
-
-    if (target.type === ENTITY_TYPE.PLAYER && target.classId === 0) {
-      trySetClassFromSkills(target);
-    }
 
     // Only process damage events if the target is a boss or player
     // Only process damage events if a boss is present in session
@@ -578,6 +571,27 @@ export class PacketParser extends EventEmitter {
       );
     }
     const activeSkill: Skill = source.skills[packet.skillId];
+
+    if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
+      trySetClassFromSkills(source);
+    }
+
+    // Try to add a missing player
+    if (
+      !this.getEntity(packet.sourceId) &&
+      source.classId === 0 &&
+      source.type === ENTITY_TYPE.UNKNOWN
+    ) {
+      trySetClassFromSkills(source);
+      if (source.classId !== 0) {
+        if (/\d/.test(source.name)) source.name = source.class;
+        this.session.entities.push(source);
+      }
+    }
+
+    if (target.type === ENTITY_TYPE.PLAYER && target.classId === 0) {
+      trySetClassFromSkills(target);
+    }
 
     /*
     if (
