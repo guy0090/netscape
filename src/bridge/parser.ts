@@ -547,7 +547,6 @@ export class PacketParser extends EventEmitter {
     }
 
     const target = this.getEntity(packet.targetId);
-    logger.debug("onDamage", { source, target, packet });
     if (!target) return;
 
     // Only process damage events if the target is a boss or player
