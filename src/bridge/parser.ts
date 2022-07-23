@@ -14,6 +14,7 @@ import {
   LogMessage,
   LogCounterAttack,
   LogPhaseTransition,
+  RAID_RESULT,
 } from "./log-lines";
 import {
   Entity,
@@ -397,12 +398,10 @@ export class PacketParser extends EventEmitter {
   onPhaseTransition(packet: LogPhaseTransition) {
     // Inconsistent, will need to improve once logger is more stable
     logger.parser("Phase transition", packet);
-    /** TODO: temporarily disabled due to packets
     if (packet.raidResultType === RAID_RESULT.RAID_RESULT) {
-      logger.debug("onPhaseTransition: Ignoring raid result packet");
+      logger.parser("Phase transition ignoring raid result packet");
       return;
     }
-    */
 
     const isPaused = this.session.paused;
     if (this.session.firstPacket === 0 || isPaused) {
