@@ -142,7 +142,7 @@ export class Entity {
     this.lastUpdate = entity.lastUpdate || +new Date();
     this.id = entity.id || 0;
     this.npcId = tryParseNum(entity.npcId);
-    this.name = entity.name || "Unknown User";
+    this.name = entity.name || "Unknown Entity";
     this.type = entity.type || ENTITY_TYPE.UNKNOWN;
     this.class = entity.class || "Unknown Class";
     this.classId = entity.classId || 0;

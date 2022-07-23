@@ -125,7 +125,7 @@ export default defineComponent({
       try {
         return require(`@/assets/sprites/skills/${this.skill?.id}.webp`);
       } catch {
-        return require("@/assets/sprites/skills/unknown.webp");
+        return require("@/assets/sprites/emojis/42.webp");
       }
     },
     getSkillDps() {

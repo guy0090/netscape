@@ -26,9 +26,7 @@ if (!existsSync(logDir)) {
 const logFormat = format.printf(({ timestamp, level, message }) => {
   // if (typeof timestamp === "number")
   //   timestamp = new Date(timestamp).toISOString();
-  return `${timestamp} ${
-    typeof level === "string" ? level.toUpperCase() : level
-  } > ${message}`;
+  return `${timestamp} ${level.toUpperCase()} > ${message}`;
 });
 
 // Log file format
@@ -90,7 +88,8 @@ const customTransports = [
     level: "debug",
     dirname: logDir + "/debug",
     filename: `NETSCAPE_DEBUG_%DATE%.log`,
-    maxFiles: 7, // keep 7 days worth of logs
+    maxFiles: 4, // keep 2 days worth of logs
+    frequency: "12h",
     handleExceptions: true,
     zippedArchive: true,
     format: combine(debugFilter(), fileFormat),
@@ -100,7 +99,8 @@ const customTransports = [
     level: "error",
     dirname: logDir + "/error",
     filename: `NETSCAPE_ERR_%DATE%.log`,
-    maxFiles: 7, // keep 7 days worth of logs
+    maxFiles: 4, // keep 2 days worth of logs
+    frequency: "12h",
     handleExceptions: true,
     zippedArchive: true,
     format: combine(warnAndErrorFilter(), fileFormat),
@@ -110,8 +110,8 @@ const customTransports = [
     level: "parser",
     dirname: logDir + "/parser",
     filename: `NETSCAPE_PARSER_%DATE%.log`,
-    maxFiles: 6, // keep 24 hours worth of logs
-    frequency: "4h", // rotate every 4 hours
+    maxFiles: 4, // keep 2 days worth of logs
+    frequency: "12h",
     handleExceptions: true,
     zippedArchive: true,
     format: combine(parserFilter(), fileFormat),

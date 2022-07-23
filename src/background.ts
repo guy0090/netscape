@@ -457,6 +457,7 @@ app.on("ready", async () => {
 
       packetParser.on("hide-hp", () => {
         const beingModified = appStore.get("hpBarClickable") as boolean;
+        logger.debug("Hiding HP Bar", { beingModified });
         if (hpBarWin && !beingModified) {
           // hpBarWin.minimize();
           hpBarWin.hide();
@@ -464,6 +465,7 @@ app.on("ready", async () => {
           hpBarWin.webContents.send("fromMain", {
             event: "end-enc",
           });
+          logger.debug("Hid HP Bar");
         }
       });
 

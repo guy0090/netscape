@@ -252,6 +252,7 @@ export class PacketParser extends EventEmitter {
 
       logger.parser("Reset session", this.session.entities);
       this.emit("reset-session", this.session.toSimpleObject());
+      this.emit("hide-hp", []);
     }, timeout);
   }
 
@@ -391,6 +392,11 @@ export class PacketParser extends EventEmitter {
     const player = this.getEntity(this.activeUser.id);
     if (player) player.id = packet.playerId;
     this.activeUser.id = packet.playerId;
+
+    const boss = this.getBoss();
+    if (boss && boss.currentHp >= 0) boss.currentHp = -1;
+
+    this.resetSession(0, false, true);
   }
 
   // logId = 2 | On: Any encounter (with a boss?) ending, wiping or transitioning phases
@@ -419,7 +425,6 @@ export class PacketParser extends EventEmitter {
 
       this.resetSession(0, this.uploadLogs);
       this.emit("raid-end", this.previousSession);
-      this.emit("hide-hp", []);
     }, 50);
   }
 
@@ -480,16 +485,20 @@ export class PacketParser extends EventEmitter {
     else if (isGuardian) packet.type = ENTITY_TYPE.GUARDIAN;
     else packet.type = ENTITY_TYPE.MONSTER;
 
-    let npc = this.getEntity(packet.id);
+    let npc = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (npc) {
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
       npc.name = packet.name;
+      npc.id = packet.id;
       npc.lastUpdate = +new Date();
+      logger.parser("Updating NPC", npc);
     } else {
       npc = new Entity(packet);
+      logger.parser("New NPC", npc);
       // Only persist Boss-type NPCs
       if (isBoss || isGuardian) {
+        logger.parser("Persisted boss NPC");
         this.session.entities.push(npc);
       }
     }
@@ -531,9 +540,14 @@ export class PacketParser extends EventEmitter {
     }
 
     let source = this.getEntity(packet.sourceId);
-    if (!source) source = new Entity({ id: packet.sourceId });
+    let sourceMissing = false;
+    if (!source) {
+      source = new Entity({ id: packet.sourceId, name: packet.sourceName });
+      sourceMissing = true;
+    }
 
     const target = this.getEntity(packet.targetId);
+    logger.debug("onDamage", { source, target, packet });
     if (!target) return;
 
     // Only process damage events if the target is a boss or player
@@ -577,13 +591,15 @@ export class PacketParser extends EventEmitter {
 
     // Try to add a missing player
     if (
-      !this.getEntity(packet.sourceId) &&
+      sourceMissing &&
       source.classId === 0 &&
       source.type === ENTITY_TYPE.UNKNOWN
     ) {
       trySetClassFromSkills(source);
       if (source.classId !== 0) {
-        if (/\d/.test(source.name)) source.name = source.class;
+        if (/\d/.test(source.name) || source.name === "Unknown Entity") {
+          source.name = source.class;
+        }
         this.session.entities.push(source);
       }
     }
@@ -663,12 +679,12 @@ export class PacketParser extends EventEmitter {
 
     const boss = this.getBoss();
     if (this.session.firstPacket === 0) {
-      logger.parser(`Starting session with boss: ${boss?.name}`, boss);
+      logger.parser(`Starting session with boss: ${boss?.name}`, { boss });
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
 
       if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
-        logger.parser(`Showing HP bar for boss: ${boss.name}`, boss);
+        logger.parser(`Showing HP bar for boss: ${boss.name}`, { boss });
         this.emit("show-hp", {
           bars: 1,
           currentHp: boss.currentHp,

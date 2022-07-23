@@ -1,9 +1,11 @@
 export const getClassName = (id: number): string => {
   if (id === 101) return "Warrior";
   if (id === 201) return "Mage";
-  if (id === 301) return "MartialArtist";
+  if (id === 301) return "Martial Artist";
+  if (id === 311) return "Male Martial Artist";
   if (id === 401) return "Assassin";
   if (id === 501) return "Gunner";
+  if (id === 601) return "Specialist";
   if (id === 102) return "Berserker";
   if (id === 103) return "Destroyer";
   if (id === 104) return "Gunlancer";
@@ -16,6 +18,7 @@ export const getClassName = (id: number): string => {
   if (id === 303) return "Scrapper";
   if (id === 304) return "Soulfist";
   if (id === 305) return "Glavier";
+  if (id === 312) return "Striker";
   if (id === 402) return "Deathblade";
   if (id === 403) return "Shadowhunter";
   if (id === 404) return "Reaper";
@@ -25,8 +28,8 @@ export const getClassName = (id: number): string => {
   if (id === 505) return "Scouter"; // Machinist?
   if (id === 511) return "FemaleGunner";
   if (id === 512) return "Gunslinger";
-  if (id === 311) return "MaleMartialArtist";
-  if (id === 312) return "Striker";
+  if (id === 602) return "Artist";
+  if (id === 603) return "Aeromancer";
 
   return "UnknownClass";
 };
@@ -34,9 +37,12 @@ export const getClassName = (id: number): string => {
 export const getClassId = (name: string): number => {
   if (name === "Warrior") return 101;
   if (name === "Mage") return 201;
-  if (name === "MartialArtist") return 301;
+  if (name === "Martial Artist") return 301;
   if (name === "Assassin") return 401;
   if (name === "Gunner") return 501;
+  if (name === "Male Martial Artist") return 311;
+  if (name === "Female Gunner") return 511;
+  if (name === "Specialist") return 601;
   if (name === "Berserker") return 102;
   if (name === "Destroyer") return 103;
   if (name === "Gunlancer") return 104;
@@ -50,6 +56,7 @@ export const getClassId = (name: string): number => {
   if (name === "Soulfist") return 304;
   if (name === "Glaivier") return 305;
   if (name === "Glavier") return 305;
+  if (name === "Striker") return 312;
   if (name === "Deathblade") return 402;
   if (name === "Shadowhunter") return 403;
   if (name === "Reaper") return 404;
@@ -57,10 +64,9 @@ export const getClassId = (name: string): number => {
   if (name === "Deadeye") return 503;
   if (name === "Artillerist") return 504;
   if (name === "Scouter") return 505;
-  if (name === "FemaleGunner") return 511;
   if (name === "Gunslinger") return 512;
-  if (name === "MaleMartialArtist") return 311;
-  if (name === "Striker") return 312;
+  if (name === "Artist") return 602;
+  if (name === "Aeromancer") return 603;
 
   return 0;
 };
