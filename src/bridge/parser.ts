@@ -596,12 +596,7 @@ export class PacketParser extends EventEmitter {
       source.type === ENTITY_TYPE.UNKNOWN
     ) {
       trySetClassFromSkills(source);
-      if (source.classId !== 0) {
-        if (/\d/.test(source.name) || source.name === "Unknown Entity") {
-          source.name = source.class;
-        }
-        this.session.entities.push(source);
-      }
+      if (source.classId !== 0) this.session.entities.push(source);
     }
 
     if (target.type === ENTITY_TYPE.PLAYER && target.classId === 0) {
@@ -713,8 +708,7 @@ export class PacketParser extends EventEmitter {
 
   // logId = 11
   onCounter(packet: LogCounterAttack) {
-    const source =
-      this.getEntity(packet.id) || this.getEntity(packet.name, true);
+    const source = this.getEntity(packet.id);
 
     if (source) {
       source.lastUpdate = +new Date();
