@@ -216,15 +216,7 @@ export class Skill {
     this.name = skill.name || "Unknown Skill";
     this.breakdown =
       skill.breakdown?.map(
-        (breakdown: {
-          timestamp: number;
-          damage: number;
-          isCrit: boolean;
-          isBackHit: boolean;
-          isFrontHit: boolean;
-          targetEntity: string;
-          isCounter?: boolean | undefined;
-        }) => new SkillBreakdown(breakdown)
+        (breakdown: SkillBreakdown) => new SkillBreakdown(breakdown)
       ) || [];
     this.stats = new SkillStats(skill?.stats);
   }
@@ -259,6 +251,7 @@ export class SkillBreakdown {
 }
 
 export class SkillStats {
+  public casts: number;
   public hits: number;
   public crits: number;
   public backHits: number;
@@ -268,6 +261,7 @@ export class SkillStats {
   public topDamage: number;
 
   constructor(stats?: Record<string, number>) {
+    this.casts = stats?.casts || 0;
     this.hits = stats?.hits || 0;
     this.crits = stats?.crits || 0;
     this.backHits = stats?.backHits || 0;
@@ -354,14 +348,15 @@ export class SimpleSkill {
 export const tryParseNum = (
   intString: string,
   float = false,
-  defaultValue = 0
+  defaultValue = 0,
+  radix = 10
 ) => {
   let intNum;
 
   try {
     intNum = float
       ? parseFloat(intString.replaceAll(",", "."))
-      : parseInt(intString);
+      : parseInt(intString, radix);
     if (isNaN(intNum)) intNum = defaultValue;
   } catch {
     intNum = defaultValue;

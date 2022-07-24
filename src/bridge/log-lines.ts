@@ -136,15 +136,37 @@ export class LogDeath {
 
 // logId = 6
 export class LogSkillStart {
+  timestamp: number;
+  id: string;
+  name: string;
+  skillId: number;
+  skillName: string;
+
   constructor(lineSplit: string[]) {
-    // TODO:
+    this.timestamp = +new Date(lineSplit[1]);
+    this.id = lineSplit[2];
+    this.name = lineSplit[3] || "Unknown Entity";
+    this.skillId = tryParseNum(lineSplit[4]);
+    this.skillName = lineSplit[5] || "Unknown Skill";
   }
 }
 
 // logId = 7
 export class LogSkillStage {
+  timestamp: number;
+  id: string;
+  name: string;
+  skillId: number;
+  skillName: string;
+  skillStage: number;
+
   constructor(lineSplit: string[]) {
-    // TODO:
+    this.timestamp = +new Date(lineSplit[1]);
+    this.id = lineSplit[2];
+    this.name = lineSplit[3] || "Unknown Entity";
+    this.skillId = tryParseNum(lineSplit[4]);
+    this.skillName = lineSplit[5] || "Unknown Skill";
+    this.skillStage = tryParseNum(lineSplit[6]);
   }
 }
 
@@ -160,7 +182,7 @@ export class LogDamage {
   targetId: string;
   targetName: string;
   damage: number;
-  damageModifier: boolean;
+  damageModifier: number;
   isCrit: boolean;
   isBackAttack: boolean;
   isFrontAttack: boolean;
@@ -177,7 +199,7 @@ export class LogDamage {
     this.targetId = lineSplit[8];
     this.targetName = lineSplit[9] || "Unknown Entity";
     this.damage = tryParseNum(lineSplit[10]);
-    this.damageModifier = lineSplit[11] === "1";
+    this.damageModifier = tryParseNum(lineSplit[11], false, 0, 16);
     this.isCrit = lineSplit[12] === "1";
     this.isBackAttack = lineSplit[13] === "1";
     this.isFrontAttack = lineSplit[14] === "1";
@@ -204,8 +226,26 @@ export class LogHeal {
 
 // logId = 10
 export class LogBuff {
+  timestamp: number;
+  id: string;
+  name: string;
+  buffId: string;
+  buffName: string;
+  isNew: boolean;
+  sourceId: string;
+  sourceName: string;
+  shieldAmount: number;
+
   constructor(lineSplit: string[]) {
-    // TODO:
+    this.timestamp = +new Date(lineSplit[1]);
+    this.id = lineSplit[2];
+    this.name = lineSplit[3] || "Unknown Entity";
+    this.buffId = lineSplit[4];
+    this.buffName = lineSplit[5] || "Unknown Buff";
+    this.isNew = lineSplit[6] === "1";
+    this.sourceId = lineSplit[7];
+    this.sourceName = lineSplit[8] || "Unknown Entity";
+    this.shieldAmount = tryParseNum(lineSplit[9], true, 0);
   }
 }
 

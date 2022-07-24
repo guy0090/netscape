@@ -15,6 +15,7 @@ import {
   LogCounterAttack,
   LogPhaseTransition,
   RAID_RESULT,
+  LogSkillStart,
 } from "./log-lines";
 import {
   Entity,
@@ -341,12 +342,15 @@ export class PacketParser extends EventEmitter {
         case 5:
           this.onDeath(new LogDeath(lineSplit));
           break;
-        /* case 6:
-        this.onSkillStart(lineSplit);
-        break;
+
+        case 6:
+          this.onSkillStart(new LogSkillStart(lineSplit));
+          break;
+        /*
         case 7:
-        this.onSkillStage(lineSplit);
-        break; */
+          this.onSkillStage(new LogSkillStage(lineSplit));
+          break;
+        */
         case 8:
           this.onDamage(new LogDamage(lineSplit));
           break;
@@ -486,7 +490,7 @@ export class PacketParser extends EventEmitter {
     else packet.type = ENTITY_TYPE.MONSTER;
 
     // TODO: name is passed in korean
-    if (packet.npcId === 42060070) packet.name = "Torn Demon Beast Lord";
+    if (packet.npcId === 42060070) packet.name = "Ravaged Tyrant of Beasts";
 
     let npc = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (npc) {
@@ -525,15 +529,27 @@ export class PacketParser extends EventEmitter {
     }
   }
 
-  /* // logId = 6
-  onSkillStart(lineSplit) {
-    // TODO:
+  // logId = 6
+  onSkillStart(packet: LogSkillStart) {
+    const source = this.getEntity(packet.id);
+    if (source && source.type === ENTITY_TYPE.PLAYER) {
+      if (!(packet.skillId in source.skills)) {
+        source.addSkill(
+          packet.skillId,
+          new Skill({ id: packet.skillId, name: packet.skillName })
+        );
+      }
+      const activeSkill = source.skills[packet.skillId];
+      activeSkill.stats.casts += 1;
+    }
   }
 
+  /*
   // logId = 7
-  onSkillStage(lineSplit) {
-    // TODO:
-  } */
+  onSkillStage(packet: LogSkillStage) {
+    logger.debug("Skill Stage", { packet });
+  }
+  */
 
   // logId = 8 | On: Any damage event
   onDamage(packet: LogDamage) {
@@ -585,8 +601,8 @@ export class PacketParser extends EventEmitter {
         new Skill({ id: packet.skillId, name: packet.skillName })
       );
     }
-    const activeSkill: Skill = source.skills[packet.skillId];
 
+    const activeSkill = source.skills[packet.skillId];
     if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
       trySetClassFromSkills(source);
     }

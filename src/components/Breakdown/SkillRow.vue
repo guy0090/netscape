@@ -5,11 +5,12 @@
         <v-col cols="auto" class="py-0 ps-0 pe-2"
           ><v-img class="skill-icon" :src="getSkillIcon()"
         /></v-col>
-        <v-col cols="auto" class="py-0">
+        <v-col cols="7" class="py-0 ps-3 pe-0">
           <v-row style="padding-bottom: 7px">
-            <strong>{{ skill?.name }}</strong>
+            <h4 class="d-inline-block text-truncate">{{ skill?.name }}</h4>
           </v-row>
           <v-row style="padding-bottom: 7px">
+            <small class="me-2">Casts: {{ skill?.stats.casts }}</small>
             <small class="me-2">Hits: {{ skill?.stats.hits }}</small>
             <small>Crits: {{ skill?.stats.crits }}</small>
             <small style="font-size: 8pt" class="align-self-end"
@@ -22,13 +23,12 @@
               >&nbsp;({{ getSkillBackHitRate() }}%)</small
             >
             <small>F. Hits: {{ skill?.stats.frontHits }}</small>
-            <small style="font-size: 8pt" class="align-self-end me-2"
+            <small style="font-size: 8pt" class="align-self-end"
               >&nbsp;({{ getSkillFrontHitRate() }}%)</small
             >
           </v-row>
         </v-col>
-        <v-spacer></v-spacer>
-        <v-col cols="auto" class="py-0">
+        <v-col class="py-0">
           <v-row class="pb-1" justify="end" style="padding-bottom: 7px">
             <strong>{{ getSkillDps() }}/s</strong>
           </v-row>
@@ -65,9 +65,9 @@
         <v-col cols="auto" class="py-0 ps-0 pe-2"
           ><v-img class="skill-icon-compact" :src="getSkillIcon()"
         /></v-col>
-        <v-col cols="auto" class="py-0">
+        <v-col cols="8" class="py-0 ps-3 pe-0">
           <v-row class="pb-1">
-            <strong>{{ skill?.name }}</strong>
+            <h4 class="d-inline-block text-truncate">{{ skill?.name }}</h4>
           </v-row>
           <v-row>
             <small class="me-2">H: {{ skill?.stats.hits }}</small>
@@ -76,8 +76,7 @@
             <small>FH: {{ getSkillFrontHitRate() }}%</small>
           </v-row>
         </v-col>
-        <v-spacer></v-spacer>
-        <v-col cols="auto" class="py-0">
+        <v-col class="py-0">
           <v-row class="pb-1" justify="end"
             ><strong>{{ getSkillDps() }}/s</strong></v-row
           >
