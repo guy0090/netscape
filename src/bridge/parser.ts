@@ -485,6 +485,9 @@ export class PacketParser extends EventEmitter {
     else if (isGuardian) packet.type = ENTITY_TYPE.GUARDIAN;
     else packet.type = ENTITY_TYPE.MONSTER;
 
+    // TODO: name is passed in korean
+    if (packet.npcId === 42060070) packet.name = "Torn Demon Beast Lord";
+
     let npc = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (npc) {
       npc.currentHp = packet.currentHp;
