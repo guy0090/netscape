@@ -533,6 +533,8 @@ export class PacketParser extends EventEmitter {
   onSkillStart(packet: LogSkillStart) {
     const source = this.getEntity(packet.id);
     if (source && source.type === ENTITY_TYPE.PLAYER) {
+      source.stats.casts += 1;
+
       if (!(packet.skillId in source.skills)) {
         source.addSkill(
           packet.skillId,

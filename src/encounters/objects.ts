@@ -160,6 +160,7 @@ export class Entity {
 }
 
 export class Stats {
+  public casts: number;
   public hits: number;
   public crits: number;
   public backHits: number;
@@ -173,6 +174,7 @@ export class Stats {
   public dpsOverTime?: number[];
 
   constructor(stats?: {
+    casts?: number;
     hits?: number;
     crits?: number;
     backHits?: number;
@@ -185,6 +187,7 @@ export class Stats {
     dps?: number;
     dpsOverTime?: number[];
   }) {
+    this.casts = stats?.casts || 0;
     this.hits = stats?.hits || 0;
     this.crits = stats?.crits || 0;
     this.backHits = stats?.backHits || 0;
