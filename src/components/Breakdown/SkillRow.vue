@@ -7,7 +7,9 @@
         /></v-col>
         <v-col cols="7" class="py-0 ps-3 pe-0">
           <v-row style="padding-bottom: 7px">
-            <h4 class="d-inline-block text-truncate">{{ skill?.name }}</h4>
+            <h4 class="d-inline-block text-truncate">
+              {{ getSkillName(skill) }}
+            </h4>
           </v-row>
           <v-row style="padding-bottom: 7px">
             <small class="me-2">Casts: {{ skill?.stats.casts }}</small>
@@ -81,7 +83,7 @@
             ><strong>{{ getSkillDps() }}/s</strong></v-row
           >
           <v-row justify="end"
-            ><small>{{ abbrNum(skill?.stats.damageDealt, 2) }}</small></v-row
+            ><small>{{ abbrNum(skill?.stats?.damageDealt, 2) }}</small></v-row
           >
         </v-col>
       </v-row>
@@ -224,6 +226,12 @@ export default defineComponent({
 
       return abbreviated;
     },
+    getSkillName(skill: any) {
+      const localized = this.$t(`skills.${skill?.id}`);
+
+      if (!/[.]/.test(localized)) return localized;
+      else return skill.name;
+    },
   },
 
   data() {
@@ -259,8 +267,10 @@ export default defineComponent({
       512: "#6bcec2",
     };
 
+    let krRegex = /[\u3131-\uD79D]/iu;
     return {
       classColors,
+      krRegex,
     };
   },
 });
