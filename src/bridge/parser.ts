@@ -492,7 +492,7 @@ export class PacketParser extends EventEmitter {
     // TODO: name is passed in korean
     if (packet.npcId === 42060070) packet.name = "Ravaged Tyrant of Beasts";
 
-    let npc = this.getEntity(packet.id) || this.getEntity(packet.name, true);
+    let npc = this.getEntity(packet.id); // || this.getEntity(packet.name, true);
     if (npc) {
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
@@ -567,8 +567,15 @@ export class PacketParser extends EventEmitter {
       sourceMissing = true;
     }
 
-    const target = this.getEntity(packet.targetId);
-    if (!target) return;
+    let target = this.getEntity(packet.targetId);
+    if (!target) {
+      target = this.getEntity(packet.targetName, true);
+      if (target) {
+        target.id = packet.targetId;
+        target.currentHp = packet.currentHp;
+        target.maxHp = packet.maxHp;
+      } else return;
+    }
 
     // Only process damage events if the target is a boss or player
     // Only process damage events if a boss is present in session
