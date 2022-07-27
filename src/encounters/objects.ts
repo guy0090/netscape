@@ -10,6 +10,7 @@ export enum ENTITY_TYPE {
 
 export class Session {
   public id: string;
+  public unlisted?: boolean;
   public paused: boolean;
   public live: boolean;
   public protocol?: boolean;
@@ -21,6 +22,7 @@ export class Session {
 
   constructor(session?: {
     id?: string;
+    unlisted?: boolean;
     paused?: boolean;
     live?: boolean;
     protocol?: boolean;
@@ -31,6 +33,7 @@ export class Session {
     damageStatistics?: DamageStatistics;
   }) {
     this.id = session?.id || uuidv4();
+    this.unlisted = session?.unlisted || true;
     this.paused = session?.paused || false;
     this.live = session?.live || true;
     this.protocol = session?.protocol || false;
