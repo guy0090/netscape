@@ -383,15 +383,17 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
-    logger.parser("Encounter ending", { ...this.getBoss(), skills: {} });
-    this.session.paused = true;
+    setTimeout(() => {
+      logger.parser("Encounter ending", { ...this.getBoss(), skills: {} });
+      this.session.paused = true;
 
-    // Set the previous session to keep in window until a new one begins
-    this.previousSession = cloneDeep(this.session);
-    this.previousSession.live = false;
+      // Set the previous session to keep in window until a new one begins
+      this.previousSession = cloneDeep(this.session);
+      this.previousSession.live = false;
 
-    this.resetSession(0, this.uploadLogs);
-    this.emit("raid-end", this.previousSession);
+      this.resetSession(0, this.uploadLogs);
+      this.emit("raid-end", this.previousSession);
+    }, 200);
   }
 
   // logId = 3 | On: A new player character is found (can be the user if the meter was started after a loading screen)
