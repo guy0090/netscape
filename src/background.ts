@@ -85,12 +85,12 @@ async function createWindow() {
 
   appStore.on("change", ({ setting, value }) => {
     switch (setting) {
-      case "pauseOnPhaseTransition":
-        packetParser.setPauseOnPhaseTransition(value);
-        break;
-      case "resetOnZoneChange":
-        packetParser.setResetOnZoneChange(value);
-        break;
+      // case "pauseOnPhaseTransition":
+      //   packetParser.setPauseOnPhaseTransition(value);
+      //   break;
+      // case "resetOnZoneChange":
+      //   packetParser.setResetOnZoneChange(value);
+      //   break;
       case "removeOverkillDamage":
         packetParser.setRemoveOverkillDamage(value);
         break;

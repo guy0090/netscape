@@ -50,8 +50,8 @@ export class HttpBridge extends EventEmitter {
 
         req.on("end", () => {
           const parsedBody = Buffer.concat(body).toString();
-          const data = this.fromBase64(parsedBody);
-          this.emit("packet", data);
+          // const data = this.fromBase64(parsedBody);
+          this.emit("packet", parsedBody);
 
           res.writeHead(200, { "Content-Type": "text/html" });
           res.end();
@@ -74,9 +74,9 @@ export class HttpBridge extends EventEmitter {
   }
 
   public spawnPacketCapturer(appSettings: AppStore) {
-    const args = ["--port", `${this.port}`];
+    const args = ["--Port", `${this.port}`];
 
-    if (appSettings.get("useWinpcap")) args.push("--useWinpcap");
+    if (appSettings.get("useWinpcap")) args.push("--UseNpcap");
 
     try {
       let binaryFile;
