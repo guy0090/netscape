@@ -32,26 +32,11 @@ export class LogInitEnv {
 // logId = 2
 export class LogPhaseTransition {
   timestamp: number;
-  raidResultType: RAID_RESULT;
+  raidResultType: RaidResult;
 
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
-    const type = tryParseNum(lineSplit[2]);
-
-    switch (type) {
-      case 0:
-        this.raidResultType = RAID_RESULT.RAID_RESULT;
-        break;
-      case 1:
-        this.raidResultType = RAID_RESULT.GUARDIAN_DEAD;
-        break;
-      case 2:
-        this.raidResultType = RAID_RESULT.RAID_END;
-        break;
-      default:
-        this.raidResultType = RAID_RESULT.UNK;
-        break;
-    }
+    this.raidResultType = tryParseNum(lineSplit[2]);
   }
 }
 
@@ -246,11 +231,18 @@ export class LogCounterAttack {
   }
 }
 
-export enum RAID_RESULT {
-  UNK = -1,
+export enum RaidResult {
   RAID_RESULT = 0, // Raid ended; Not sure when it procs
-  GUARDIAN_DEAD = 1, // Guardian died; Also procs on every Argos phase
-  RAID_END = 2, // Non-guardian boss died; Party wiped (does not proc on guardian wipes)
+  RAID_BOSS_KILL_NOTIFY = 1, // Guardian died; Also procs on every Argos phase
+  TRIGGER_BOSS_BATTLE_STATUS = 2, // Non-guardian boss died; Party wiped (does not proc on guardian wipes)
+}
+
+export enum HitOption {
+  HIT_OPTION_NONE = -1,
+  HIT_OPTION_BACK_ATTACK = 0,
+  HIT_OPTION_FRONTAL_ATTACK = 1,
+  HIT_OPTION_FLANK_ATTACK = 2,
+  HIT_OPTION_MAX = 3,
 }
 
 export enum HitFlag {
@@ -268,7 +260,4 @@ export enum HitFlag {
   HIT_FLAG_DAMAGE_SHARE = 11,
   HIT_FLAG_DODGE_HIT = 12,
   HIT_FLAG_MAX = 13,
-  HIT_OPTION_BACK_ATTACK = 1 << (0 + 4),
-  HIT_OPTION_FRONTAL_ATTACK = 1 << (1 + 4),
-  HIT_OPTION_FLANK_ATTACK = 1 << (2 + 4),
 }

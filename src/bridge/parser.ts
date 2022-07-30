@@ -14,6 +14,9 @@ import {
   LogCounterAttack,
   LogSkillStart,
   HitFlag,
+  HitOption,
+  RaidResult,
+  LogPhaseTransition,
 } from "./log-lines";
 import {
   Entity,
@@ -314,7 +317,7 @@ export class PacketParser extends EventEmitter {
           this.onInitEnv(new LogInitEnv(lineSplit));
           break;
         case 2:
-          this.onPhaseTransition(/*new LogPhaseTransition(lineSplit)*/);
+          this.onPhaseTransition(new LogPhaseTransition(lineSplit));
           break;
         case 3:
           this.onNewPc(new LogNewPc(lineSplit));
@@ -376,7 +379,9 @@ export class PacketParser extends EventEmitter {
   }
 
   // logId = 2 | On: Any encounter (with a boss?) ending, wiping or transitioning phases
-  onPhaseTransition(/*packet: LogPhaseTransition*/) {
+  onPhaseTransition(packet: LogPhaseTransition) {
+    if (packet.raidResultType === RaidResult.RAID_RESULT) return;
+
     const isPaused = this.session.paused;
     if (this.session.firstPacket === 0 || isPaused) {
       logger.parser("Encounter hasn't started; Skipping phase transition");
@@ -524,6 +529,11 @@ export class PacketParser extends EventEmitter {
       return;
     }
 
+    const { damageModifier } = packet;
+    const hitFlag: HitFlag = damageModifier & 0xf;
+
+    if (hitFlag === HitFlag.HIT_FLAG_INVINCIBLE) return;
+
     let source = this.getEntity(packet.sourceId);
     let sourceMissing = false;
     if (!source) {
@@ -594,16 +604,13 @@ export class PacketParser extends EventEmitter {
       trySetClassFromSkills(target);
     }
 
-    const { damageModifier } = packet;
+    const hitOption: HitOption = ((damageModifier >> 4) & 0x7) - 1;
 
     const isCrit =
-      (damageModifier &
-        (HitFlag.HIT_FLAG_CRITICAL | HitFlag.HIT_FLAG_DOT_CRITICAL)) >
-      0;
-
-    const isBackAttack = (damageModifier & HitFlag.HIT_OPTION_BACK_ATTACK) > 0;
-    const isFrontAttack =
-      (damageModifier & HitFlag.HIT_OPTION_FRONTAL_ATTACK) > 0;
+      hitFlag === HitFlag.HIT_FLAG_CRITICAL ||
+      hitFlag === HitFlag.HIT_FLAG_DOT_CRITICAL;
+    const isBackAttack = hitOption === HitOption.HIT_OPTION_BACK_ATTACK;
+    const isFrontAttack = hitOption === HitOption.HIT_OPTION_FRONTAL_ATTACK;
 
     const critCount = isCrit ? 1 : 0;
     const backAttackCount = isBackAttack ? 1 : 0;
