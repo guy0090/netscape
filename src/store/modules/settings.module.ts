@@ -112,5 +112,16 @@ export const settings: Module<any, any> = {
         return err;
       }
     },
+    async checkUpdate() {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (window as any).ipcBridge.invoke("toMain", {
+          message: "get-update",
+        });
+        return;
+      } catch (err) {
+        return err;
+      }
+    },
   },
 };

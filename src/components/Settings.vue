@@ -46,7 +46,7 @@ export default defineComponent({
   },
 
   data() {
-    let tab = "1";
+    let tab = "0";
     return {
       tab,
     };

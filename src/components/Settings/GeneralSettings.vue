@@ -4,9 +4,34 @@
     <v-row class="mb-8"
       ><small>These settings modify the functionality of the app</small></v-row
     >
-    <v-row>
+    <v-row class="mb-4">
+      <v-col>
+        <v-row> <v-icon icon="mdi-download" />Updates</v-row>
+        <v-row class="mt-3">
+          <small>{{ updateStatus }}</small>
+        </v-row>
+      </v-col>
+      <v-col cols="auto" align-self="center">
+        <v-row>
+          <v-btn
+            v-if="!updateDownloaded"
+            color="success"
+            variant="contained"
+            size="small"
+            v-on:click="checkForUpdates()"
+            :disabled="checkingUpdate"
+          >
+            {{ checkingUpdate ? "Checking..." : "Check for updates" }}
+          </v-btn>
+          <v-btn v-else color="sucess" variant="contained" size="small">
+            Install
+          </v-btn>
+        </v-row>
+      </v-col>
+    </v-row>
+    <v-row class="mt-4">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-wifi-arrow-left"></v-icon>&nbsp;Npcap</v-row
         >
         <v-row class="mb-3"
@@ -29,7 +54,7 @@
     </v-row>
     <v-row hidden class="mt-5">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-refresh"></v-icon>&nbsp;Reset on Zone Change
         </v-row>
         <v-row class="mb-3"
@@ -52,7 +77,7 @@
     </v-row>
     <v-row class="mt-5">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2">
+        <v-row class="mb-3">
           <v-icon icon="mdi-dock-window"></v-icon>&nbsp;Window Mode
         </v-row>
         <v-row class="mb-3">
@@ -75,7 +100,7 @@
     </v-row>
     <v-row class="mt-5">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-incognito"></v-icon>&nbsp;Anonymize Player Names
         </v-row>
         <v-row class="mb-3"
@@ -97,7 +122,7 @@
     </v-row>
     <v-row class="mt-5">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-filter-outline"></v-icon>&nbsp;Remove Overkill
           Damage
         </v-row>
@@ -121,7 +146,7 @@
     </v-row>
     <v-row class="mt-5">
       <v-col cols="auto" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon
             :icon="minifyDirection === 0 ? 'mdi-arrow-down' : 'mdi-arrow-up'"
           ></v-icon
@@ -146,7 +171,7 @@
     </v-row>
     <v-row class="mt-5">
       <v-col cols="8" class="pb-0">
-        <v-row class="mb-2"
+        <v-row class="mb-3"
           ><v-icon icon="mdi-minus"></v-icon>&nbsp;Auto Minify&nbsp;
           <small
             :class="`px-1 align-self-center ${
@@ -216,6 +241,9 @@ export default defineComponent({
     let removeOverkillDamage = ref(true);
     let minifyDelay = ref("");
     let minifyDirection = ref(0);
+    let checkingUpdate = ref(false);
+    let updateStatus = ref("No updates found");
+    let updateDownloaded = ref(false);
 
     return {
       useNpcap,
@@ -226,6 +254,9 @@ export default defineComponent({
       removeOverkillDamage,
       minifyDelay,
       minifyDirection,
+      checkingUpdate,
+      updateStatus,
+      updateDownloaded,
     };
   },
 
@@ -235,7 +266,13 @@ export default defineComponent({
   },
 
   methods: {
-    ...mapActions(["updateSetting", "getSetting", "debug", "error"]),
+    ...mapActions([
+      "updateSetting",
+      "getSetting",
+      "checkUpdate",
+      "debug",
+      "error",
+    ]),
     toMs(input: string) {
       try {
         return ms(input);
@@ -334,6 +371,20 @@ export default defineComponent({
             default:
               break;
           }
+        } else if (event === "update-found") {
+          this.checkingUpdate = false;
+
+          this.updateStatus = "Downloading: 0%";
+        } else if (event === "update-not-found") {
+          this.checkingUpdate = false;
+          this.updateStatus = "No updates found";
+        } else if (event === "update-progress") {
+          const { progress } = message;
+          this.updateStatus = `Downloading: ${progress}%`;
+        } else if (event === "update-downloaded") {
+          this.updateDownloaded = true;
+          this.checkingUpdate = false;
+          this.updateStatus = "Update downloaded";
         }
       });
     },
@@ -387,6 +438,10 @@ export default defineComponent({
         key: "minifyDirection",
         value: this.minifyDirection,
       });
+    },
+    checkForUpdates() {
+      this.checkingUpdate = true;
+      this.checkUpdate();
     },
   },
 });

@@ -1,6 +1,7 @@
 import { logger } from "@/util/logging";
 import { packetParser, win } from "@/background";
 import { ipcMain, app, shell } from "electron";
+import { autoUpdater } from "electron-updater";
 import AppStore from "@/persistance/store";
 import { renameOldEncounters } from "@/encounters/helpers";
 
@@ -103,6 +104,16 @@ class DamageMeterEvents {
             } catch (err) {
               return err;
             }
+          case "get-update":
+            autoUpdater.checkForUpdates();
+            break;
+          case "install-update":
+            try {
+              autoUpdater.quitAndInstall();
+            } catch {
+              return { message: "Failed to install update" };
+            }
+            break;
           default:
             return { error: "Invalid event" };
         }

@@ -203,17 +203,57 @@ async function createWindow() {
     win.loadURL(`file://${__dirname}/index.html`);
     // win.webContents.openDevTools({ mode: "detach", activate: false });
 
-    autoUpdater.checkForUpdatesAndNotify();
-    setInterval(() => {
-      try {
-        autoUpdater.checkForUpdatesAndNotify().catch((e) => {
-          logger.error("Failed to check for updates", e);
-        });
-      } catch (err) {
-        logger.error(`Unknown error during update check`, err);
-      }
-    }, ms("10m")); // 10min checks
+    startUpdater();
   }
+}
+
+function startUpdater() {
+  autoUpdater.checkForUpdatesAndNotify();
+  setInterval(() => {
+    try {
+      autoUpdater.checkForUpdatesAndNotify().catch((e) => {
+        logger.error("Failed to check for updates", e);
+      });
+    } catch (err) {
+      logger.error(`Unknown error during update check`, err);
+    }
+  }, ms("10m")); // 10min checks
+
+  autoUpdater.on("update-available", () => {
+    if (win) {
+      win.webContents.send("fromMain", {
+        event: "update-found",
+      });
+    }
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    if (win) {
+      win.webContents.send("fromMain", {
+        event: "update-not-found",
+      });
+    }
+  });
+
+  autoUpdater.on("download-progress", (progressObj) => {
+    const percent = Math.round(progressObj.percent);
+    if (win) {
+      win.webContents.send("fromMain", {
+        event: "update-progress",
+        message: {
+          progress: percent,
+        },
+      });
+    }
+  });
+
+  autoUpdater.on("update-downloaded", () => {
+    if (win) {
+      win.webContents.send("fromMain", {
+        event: "update-downloaded",
+      });
+    }
+  });
 }
 
 async function createHpBar(screenWidth: number) {
@@ -320,7 +360,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.5.1.1");
+  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.5.2.1");
 
   overlayWindow.on("attach", () => {
     attached = true;
