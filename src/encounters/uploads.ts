@@ -1,16 +1,12 @@
 import { logger } from "@/util/logging";
 import ms from "ms";
-import {
-  ENTITY_TYPE,
-  Entity,
-  Session,
-  SkillBreakdown,
-} from "@/encounters/objects";
+import { Entity, Session, SkillBreakdown } from "@/encounters/objects";
 import AppStore from "@/persistance/store";
 // import AppStore from "@/persistance/store";
 import axios from "axios";
 import { shell } from "electron";
 import { cloneDeep } from "lodash";
+import { EntityType } from "@/bridge/log-lines";
 export const UPLOAD_URL = process.env.VUE_APP_UPLOAD_URL;
 export const SITE_URL = process.env.VUE_APP_LOGS_URL;
 
@@ -24,7 +20,7 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
     const uploadKey = await appStore.getPassword();
 
     const bosses = session.entities.filter(
-      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
+      (e) => e.type === EntityType.BOSS || e.type === EntityType.GUARDIAN
     );
     // If multiple bosses are logged, only keep the most recent one
     if (bosses.length > 1) {
@@ -47,7 +43,7 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
 
     // Create DPS over time data for ECharts for each player entity
     for (const e of session.entities) {
-      if (e.type === ENTITY_TYPE.PLAYER) {
+      if (e.type === EntityType.PLAYER) {
         e.stats.dpsOverTime = getEntityData(intervals, e, session.firstPacket);
       }
     }
@@ -85,10 +81,10 @@ export const validateUpload = (session: Session) => {
   const entities = session.entities;
   const bossEntities = entities.filter(
     (entity) =>
-      entity.type === ENTITY_TYPE.BOSS || entity.type === ENTITY_TYPE.GUARDIAN
+      entity.type === EntityType.BOSS || entity.type === EntityType.GUARDIAN
   );
   const playerEntities = entities.filter(
-    (entity) => entity.type === ENTITY_TYPE.PLAYER
+    (entity) => entity.type === EntityType.PLAYER
   );
 
   const hasBoss = bossEntities.length > 0;

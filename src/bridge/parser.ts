@@ -17,10 +17,10 @@ import {
   HitOption,
   RaidResult,
   LogPhaseTransition,
+  EntityType,
 } from "./log-lines";
 import {
   Entity,
-  ENTITY_TYPE,
   Session,
   Skill,
   SkillBreakdown,
@@ -39,7 +39,12 @@ import {
   uploadSession,
   validateUpload,
 } from "@/encounters/uploads";
-import { abyssRaids, guardians, raidBosses } from "@/util/supported-bosses";
+import {
+  abyssRaids,
+  raidBosses,
+  guardians,
+  extraHpBars,
+} from "@/util/supported-bosses";
 import AppStore from "@/persistance/store";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -170,7 +175,7 @@ export class PacketParser extends EventEmitter {
         continue;
       }
 
-      if (entity.type !== ENTITY_TYPE.PLAYER && entity.currentHp <= 0) {
+      if (entity.type !== EntityType.PLAYER && entity.currentHp <= 0) {
         logger.parser("Expiring dead boss/monster entity", {
           id: entity.id,
           name: entity.name,
@@ -179,8 +184,8 @@ export class PacketParser extends EventEmitter {
       }
 
       if (
-        entity.type === ENTITY_TYPE.MONSTER ||
-        entity.type === ENTITY_TYPE.UNKNOWN
+        entity.type === EntityType.MONSTER ||
+        entity.type === EntityType.UNKNOWN
       ) {
         logger.parser("Expiring unknown/monster entity", {
           id: entity.id,
@@ -266,8 +271,8 @@ export class PacketParser extends EventEmitter {
   hasBoss(entities: Entity[], mustBeAlive = true) {
     return entities.some(
       (entity) =>
-        (entity.type === ENTITY_TYPE.BOSS ||
-          entity.type === ENTITY_TYPE.GUARDIAN) &&
+        (entity.type === EntityType.BOSS ||
+          entity.type === EntityType.GUARDIAN) &&
         (mustBeAlive ? entity.currentHp > 0 : true)
     );
   }
@@ -275,7 +280,7 @@ export class PacketParser extends EventEmitter {
   getBoss() {
     const bosses = this.session.entities.filter(
       (entity) =>
-        entity.type === ENTITY_TYPE.BOSS || entity.type === ENTITY_TYPE.GUARDIAN
+        entity.type === EntityType.BOSS || entity.type === EntityType.GUARDIAN
     );
 
     if (bosses.length > 0) {
@@ -422,8 +427,9 @@ export class PacketParser extends EventEmitter {
 
       if (user.id === this.activeUser.id) {
         user.name = this.activeUser.name; // this.activeUser.realName;
-        user.level = this.activeUser.level;
-        user.gearLevel = this.activeUser.gearLevel;
+        // this.activeUser.gearLevel = user.gearLevel;
+        this.activeUser.classId = user.classId;
+        this.activeUser.realName = user.name;
         logger.parser("onNewPc: Set active user details", user);
       }
 
@@ -436,12 +442,12 @@ export class PacketParser extends EventEmitter {
       user.id = packet.id;
       user.class = packet.class;
       user.classId = packet.classId;
-      user.type = ENTITY_TYPE.PLAYER;
+      user.type = EntityType.PLAYER;
 
       if (packet.id === this.activeUser.id) {
         user.name = this.activeUser.name;
-        user.level = this.activeUser.level;
-        user.gearLevel = this.activeUser.gearLevel;
+        // user.level = this.activeUser.level;
+        // user.gearLevel = this.activeUser.gearLevel;
         logger.parser("onNewPc: Updated active user details", user);
       }
 
@@ -454,9 +460,9 @@ export class PacketParser extends EventEmitter {
     const isBoss = this.isBossEntity(packet.npcId);
     const isGuardian = this.isGuardianEntity(packet.npcId);
 
-    if (isBoss) packet.type = ENTITY_TYPE.BOSS;
-    else if (isGuardian) packet.type = ENTITY_TYPE.GUARDIAN;
-    else packet.type = ENTITY_TYPE.MONSTER;
+    if (isBoss) packet.type = EntityType.BOSS;
+    else if (isGuardian) packet.type = EntityType.GUARDIAN;
+    else packet.type = EntityType.MONSTER;
 
     // TODO: name is passed in korean
     if (packet.npcId === 42060070) packet.name = "Ravaged Tyrant of Beasts";
@@ -485,10 +491,10 @@ export class PacketParser extends EventEmitter {
   // logId = 5 | On: Death of any NPC or PC
   onDeath(packet: LogDeath) {
     const target = this.getEntity(packet.id);
-    const skipFilter = [ENTITY_TYPE.GUARDIAN, ENTITY_TYPE.BOSS];
+    const skipFilter = [EntityType.GUARDIAN, EntityType.BOSS];
 
     if (target && !skipFilter.includes(target.type)) {
-      if (target.type === ENTITY_TYPE.PLAYER) {
+      if (target.type === EntityType.PLAYER) {
         target.stats.deaths += 1;
         target.lastUpdate = +new Date();
       } else {
@@ -501,7 +507,7 @@ export class PacketParser extends EventEmitter {
   // logId = 6
   onSkillStart(packet: LogSkillStart) {
     const source = this.getEntity(packet.id);
-    if (source && source.type === ENTITY_TYPE.PLAYER) {
+    if (source && source.type === EntityType.PLAYER) {
       source.stats.casts += 1;
 
       if (!(packet.skillId in source.skills)) {
@@ -555,8 +561,8 @@ export class PacketParser extends EventEmitter {
     // Only process damage events if a boss is present in session
     // Don't count damage if session is paused
     if (
-      target.type === ENTITY_TYPE.MONSTER ||
-      target.type === ENTITY_TYPE.UNKNOWN ||
+      target.type === EntityType.MONSTER ||
+      target.type === EntityType.UNKNOWN ||
       !this.hasBossEntity ||
       this.session.paused
     ) {
@@ -570,7 +576,7 @@ export class PacketParser extends EventEmitter {
     source.lastUpdate = +new Date();
 
     if (
-      target.type !== ENTITY_TYPE.PLAYER &&
+      target.type !== EntityType.PLAYER &&
       this.removeOverkillDamage &&
       packet.currentHp < 0
     ) {
@@ -586,7 +592,7 @@ export class PacketParser extends EventEmitter {
     }
 
     const activeSkill = source.skills[packet.skillId];
-    if (source.type === ENTITY_TYPE.PLAYER && source.classId === 0) {
+    if (source.type === EntityType.PLAYER && source.classId === 0) {
       trySetClassFromSkills(source);
     }
 
@@ -594,13 +600,13 @@ export class PacketParser extends EventEmitter {
     if (
       sourceMissing &&
       source.classId === 0 &&
-      source.type === ENTITY_TYPE.UNKNOWN
+      source.type === EntityType.UNKNOWN
     ) {
       trySetClassFromSkills(source);
       if (source.classId !== 0) this.session.entities.push(source);
     }
 
-    if (target.type === ENTITY_TYPE.PLAYER && target.classId === 0) {
+    if (target.type === EntityType.PLAYER && target.classId === 0) {
       trySetClassFromSkills(target);
     }
 
@@ -633,7 +639,7 @@ export class PacketParser extends EventEmitter {
     activeSkill.stats.backHits += backAttackCount;
     activeSkill.stats.frontHits += frontAttackCount;
 
-    if (source.type === ENTITY_TYPE.PLAYER) {
+    if (source.type === EntityType.PLAYER) {
       activeSkill.breakdown?.push(
         new SkillBreakdown({
           timestamp: +new Date(),
@@ -652,7 +658,7 @@ export class PacketParser extends EventEmitter {
       );
     }
 
-    if (target.type === ENTITY_TYPE.PLAYER) {
+    if (target.type === EntityType.PLAYER) {
       this.session.damageStatistics.totalDamageTaken += packet.damage;
       this.session.damageStatistics.topDamageTaken = Math.max(
         this.session.damageStatistics.topDamageTaken,
@@ -666,14 +672,24 @@ export class PacketParser extends EventEmitter {
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
 
-      if (boss && boss.type === ENTITY_TYPE.GUARDIAN) {
+      if (boss) {
         logger.parser(`Showing HP bar for boss: ${boss.name}`, { boss });
-        this.emit("show-hp", {
-          bars: 1,
-          currentHp: boss.currentHp,
-          maxHp: boss.maxHp,
-          bossName: boss.name,
-        });
+        const isExtraBoss = boss.npcId in extraHpBars;
+        if (boss.type === EntityType.GUARDIAN) {
+          this.emit("show-hp", {
+            bars: 1,
+            currentHp: boss.currentHp,
+            maxHp: boss.maxHp,
+            bossName: boss.name,
+          });
+        } else if (isExtraBoss) {
+          this.emit("show-hp", {
+            bars: extraHpBars[boss.npcId].bars,
+            currentHp: boss.currentHp,
+            maxHp: boss.maxHp,
+            bossName: boss.name,
+          });
+        }
       }
     }
 

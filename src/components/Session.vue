@@ -45,7 +45,8 @@
 </template>
 
 <script lang="ts">
-import { Entity, ENTITY_TYPE, Session } from "@/encounters/objects";
+import { EntityType } from "@/bridge/log-lines";
+import { Entity, Session } from "@/encounters/objects";
 import { defineComponent, PropType } from "vue";
 import { useStore, mapActions } from "vuex";
 import BossStatus from "./Session/BossStatus.vue";
@@ -104,7 +105,7 @@ export default defineComponent({
       if (this.session && this.session.entities) {
         return (
           this.session.entities.find(
-            (e: Entity) => e.type === ENTITY_TYPE.GUARDIAN && e.maxHp > 0
+            (e: Entity) => e.type === EntityType.GUARDIAN && e.maxHp > 0
           ) !== undefined
         );
       } else {
@@ -117,19 +118,9 @@ export default defineComponent({
         guardian = this.session.entities
           .filter(
             (entity: Entity) =>
-              entity.type === ENTITY_TYPE.GUARDIAN && entity.maxHp > 0
+              entity.type === EntityType.GUARDIAN && entity.maxHp > 0
           )
           .sort((a: Entity, b: Entity) => b.lastUpdate - a.lastUpdate)[0];
-
-        if (guardian) {
-          return {
-            name: guardian.name,
-            currentHp: guardian.currentHp,
-            maxHp: guardian.maxHp,
-          };
-        } else {
-          return guardian;
-        }
       }
       return guardian;
     },

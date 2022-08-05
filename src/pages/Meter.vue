@@ -135,10 +135,10 @@ import { defineComponent, reactive, ref } from "vue";
 import { mapActions, useStore } from "vuex";
 import {
   DamageStatistics,
-  ENTITY_TYPE,
   SimpleEntity,
   SimpleSession,
 } from "@/encounters/objects";
+import { EntityType } from "@/bridge/log-lines";
 
 export default defineComponent({
   name: "App",
@@ -459,7 +459,7 @@ export default defineComponent({
       let durationSeconds = this.sessionDurationSeconds;
       if (durationSeconds > 0 && this.session.entities.length > 0) {
         const playerEntities = this.session.entities.filter(
-          (entity) => entity.type === ENTITY_TYPE.PLAYER
+          (entity) => entity.type === EntityType.PLAYER
         );
         if (playerEntities.length > 0) {
           dps =

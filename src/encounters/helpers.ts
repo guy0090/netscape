@@ -1,11 +1,12 @@
 import os from "os";
 import fs from "fs";
 import { logger } from "@/util/logging";
-import { Entity, ENTITY_TYPE, Session } from "./objects";
+import { Entity, Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
 import glob from "glob";
 import { getClassName } from "@/util/game-classes";
 import { getClassIdFromSkillId } from "@/util/skills";
+import { EntityType } from "@/bridge/log-lines";
 
 export const USER_HOME_DIR = os.homedir();
 export const ENCOUNTER_DIR = `${USER_HOME_DIR}\\Documents\\Netscape\\Encounters`;
@@ -152,7 +153,7 @@ export const getTotalDps = (encounter: Session) => {
   const duration = (encounter.lastPacket - encounter.firstPacket) / 1000;
   let total = 0;
   for (const entity of encounter.entities) {
-    if (entity.type !== ENTITY_TYPE.PLAYER) continue;
+    if (entity.type !== EntityType.PLAYER) continue;
     total += entity.stats.damageDealt;
   }
   return duration > 0 && total > 0 ? total / duration : 0;
@@ -172,7 +173,7 @@ export const trySetClassFromSkills = (player: Entity) => {
     if (classId !== 0) {
       player.classId = classId;
       player.class = getClassName(classId);
-      player.type = ENTITY_TYPE.PLAYER;
+      player.type = EntityType.PLAYER;
       player.lastUpdate = +new Date();
       return false;
     }

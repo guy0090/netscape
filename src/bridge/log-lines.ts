@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { tryParseNum } from "@/encounters/objects";
-import { ENTITY_TYPE } from "@/encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
 
@@ -51,7 +50,7 @@ export class LogNewPc {
   gearLevel: number;
   currentHp: number;
   maxHp: number;
-  type: ENTITY_TYPE;
+  type: EntityType;
 
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
@@ -63,7 +62,7 @@ export class LogNewPc {
     this.gearLevel = tryParseNum(lineSplit[7], true);
     this.currentHp = tryParseNum(lineSplit[8]);
     this.maxHp = tryParseNum(lineSplit[9]);
-    this.type = ENTITY_TYPE.PLAYER;
+    this.type = EntityType.PLAYER;
   }
 }
 
@@ -75,7 +74,7 @@ export class LogNewNpc {
   name: string;
   currentHp: number;
   maxHp: number;
-  type: ENTITY_TYPE;
+  type: EntityType;
 
   constructor(lineSplit: string[]) {
     this.timestamp = +new Date(lineSplit[1]);
@@ -84,7 +83,7 @@ export class LogNewNpc {
     this.name = lineSplit[4] || "Unknown Entity";
     this.currentHp = tryParseNum(lineSplit[5]);
     this.maxHp = tryParseNum(lineSplit[6]);
-    this.type = ENTITY_TYPE.UNKNOWN;
+    this.type = EntityType.UNKNOWN;
   }
 }
 
@@ -229,6 +228,14 @@ export class LogCounterAttack {
     this.targetId = lineSplit[4];
     this.targetName = lineSplit[5] || "Unknown Entity";
   }
+}
+
+export enum EntityType {
+  UNKNOWN = -1,
+  MONSTER = 0,
+  BOSS = 1,
+  GUARDIAN = 2,
+  PLAYER = 3,
 }
 
 export enum RaidResult {

@@ -1,12 +1,5 @@
+import { EntityType } from "@/bridge/log-lines";
 import { v4 as uuidv4 } from "uuid";
-
-export enum ENTITY_TYPE {
-  UNKNOWN = -1,
-  MONSTER = 0,
-  BOSS = 1,
-  GUARDIAN = 2,
-  PLAYER = 3,
-}
 
 export class Session {
   public id: string;
@@ -45,10 +38,10 @@ export class Session {
   }
 
   cleanEntities(
-    entityFilter: ENTITY_TYPE[] | undefined = [
-      ENTITY_TYPE.GUARDIAN,
-      ENTITY_TYPE.BOSS,
-      ENTITY_TYPE.PLAYER,
+    entityFilter: EntityType[] | undefined = [
+      EntityType.GUARDIAN,
+      EntityType.BOSS,
+      EntityType.PLAYER,
     ]
   ) {
     if (entityFilter) {
@@ -58,12 +51,9 @@ export class Session {
     }
 
     this.entities = this.entities.filter((e) => {
-      if (e.type === ENTITY_TYPE.BOSS || e.type == ENTITY_TYPE.GUARDIAN)
+      if (e.type === EntityType.BOSS || e.type == EntityType.GUARDIAN)
         return true;
-      else if (
-        e.type === ENTITY_TYPE.PLAYER &&
-        Object.keys(e.skills).length > 0
-      )
+      else if (e.type === EntityType.PLAYER && Object.keys(e.skills).length > 0)
         return true;
       else return false;
     });
@@ -80,7 +70,7 @@ export class Session {
 
   getBoss(): Entity | undefined {
     const bosses = this.entities.filter(
-      (e) => e.type === ENTITY_TYPE.BOSS || e.type === ENTITY_TYPE.GUARDIAN
+      (e) => e.type === EntityType.BOSS || e.type === EntityType.GUARDIAN
     );
 
     let boss;
@@ -130,7 +120,7 @@ export class Entity {
   public id: string;
   public npcId: number;
   public name: string;
-  public type: ENTITY_TYPE;
+  public type: EntityType;
   public class: string;
   public classId: number;
   public level: number;
@@ -146,7 +136,7 @@ export class Entity {
     this.id = entity.id || 0;
     this.npcId = tryParseNum(entity.npcId);
     this.name = entity.name || "Unknown Entity";
-    this.type = entity.type || ENTITY_TYPE.UNKNOWN;
+    this.type = entity.type || EntityType.UNKNOWN;
     this.class = entity.class || "Unknown Class";
     this.classId = entity.classId || 0;
     this.level = entity.level || 0;
@@ -295,12 +285,9 @@ export class SimpleSession {
 
     // Only keep players with skills
     this.entities = this.entities.filter((e) => {
-      if (e.type === ENTITY_TYPE.BOSS || e.type == ENTITY_TYPE.GUARDIAN)
+      if (e.type === EntityType.BOSS || e.type == EntityType.GUARDIAN)
         return true;
-      else if (
-        e.type === ENTITY_TYPE.PLAYER &&
-        Object.keys(e.skills).length > 0
-      )
+      else if (e.type === EntityType.PLAYER && Object.keys(e.skills).length > 0)
         return true;
       else return false;
     });
@@ -314,7 +301,7 @@ export class SimpleEntity {
   public id: string;
   public npcId?: number;
   public name: string;
-  public type: ENTITY_TYPE;
+  public type: EntityType;
   public classId: number;
   public gearLevel: number;
   public currentHp: number;
