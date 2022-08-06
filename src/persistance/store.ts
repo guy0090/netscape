@@ -126,6 +126,10 @@ const storeSchema: Schema<Record<string, unknown>> = {
     type: "boolean",
     default: false,
   },
+  uploadUnlisted: {
+    type: "boolean",
+    default: true,
+  },
   minifyDirection: {
     default: 0, // 0 = Down, 1 = Up
     type: "number",

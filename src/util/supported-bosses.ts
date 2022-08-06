@@ -58,13 +58,13 @@ export const extraHpBars: { [id: number]: { bars: number } } = {
     bars: 50,
   },
   480007: {
-    bars: 50,
+    bars: 1,
   },
   480008: {
-    bars: 160,
+    bars: 1,
   },
   42060070: {
-    bars: 40,
+    bars: 1,
   },
   480009: {
     bars: 50,

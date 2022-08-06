@@ -55,8 +55,6 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
       });
     });
 
-    // TODO: Temporary, add option soon
-    session.unlisted = true;
     const upload = { key: uploadKey, data: session };
 
     const response = await axios.post(

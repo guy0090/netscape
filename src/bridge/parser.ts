@@ -72,6 +72,7 @@ export interface PacketParserConfig {
   uploadLogs?: boolean | undefined;
   openUploadInBrowser?: boolean | undefined;
   startSending?: boolean | undefined;
+  uploadUnlisted?: boolean | undefined;
 }
 
 export class PacketParser extends EventEmitter {
@@ -81,6 +82,7 @@ export class PacketParser extends EventEmitter {
   private removeOverkillDamage: boolean;
   private uploadLogs: boolean;
   private openUploadInBrowser: boolean;
+  private uploadUnlisted: boolean;
   private hasBossEntity: boolean;
   private previousSession: Session | undefined;
   private activeUser: ActiveUser;
@@ -94,6 +96,7 @@ export class PacketParser extends EventEmitter {
     this.removeOverkillDamage = config.removeOverkillDamage || true;
     this.uploadLogs = config.uploadLogs || false;
     this.openUploadInBrowser = config.openUploadInBrowser || false;
+    this.uploadUnlisted = config.uploadUnlisted || true;
     this.resetTimer = undefined;
     this.hasBossEntity = false;
     this.activeUser = {
@@ -106,7 +109,7 @@ export class PacketParser extends EventEmitter {
     };
     this.appStore = appStore;
     // Init
-    this.session = new Session();
+    this.session = new Session({ unlisted: this.uploadUnlisted });
 
     // Start sending session information
     if (config.startSending) this.startBroadcasting(200);
@@ -160,6 +163,10 @@ export class PacketParser extends EventEmitter {
 
   setOpenUploadInBrowser(openUploadInBrowser: boolean) {
     this.openUploadInBrowser = openUploadInBrowser;
+  }
+
+  setUploadUnlisted(uploadUnlisted: boolean) {
+    this.uploadUnlisted = uploadUnlisted;
   }
 
   resetEntities(entities: Entity[]): Entity[] {
@@ -241,7 +248,10 @@ export class PacketParser extends EventEmitter {
     this.resetTimer = setTimeout(() => {
       const entities = cloneDeep(this.session).entities;
       const resetEntities = this.resetEntities(entities);
-      this.session = new Session({ entities: resetEntities });
+      this.session = new Session({
+        entities: resetEntities,
+        unlisted: this.uploadUnlisted,
+      });
 
       this.hasBossEntity = this.hasBoss(this.session.entities);
       this.resetTimer = undefined;
@@ -443,6 +453,7 @@ export class PacketParser extends EventEmitter {
       user.class = packet.class;
       user.classId = packet.classId;
       user.type = EntityType.PLAYER;
+      user.gearLevel = packet.gearLevel;
 
       if (packet.id === this.activeUser.id) {
         user.name = this.activeUser.name;

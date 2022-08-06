@@ -43,6 +43,7 @@ export const parserConfig: PacketParserConfig = {
   pauseOnPhaseTransition: appStore.get("pauseOnPhaseTransition") as boolean,
   uploadLogs: appStore.get("uploadLogs") as boolean,
   openUploadInBrowser: appStore.get("openInBrowserOnUpload") as boolean,
+  uploadUnlisted: appStore.get("uploadUnlisted") as boolean,
 };
 
 export const windowMode = appStore.get("windowMode") as number;
@@ -99,6 +100,9 @@ async function createWindow() {
         break;
       case "openInBrowserOnUpload":
         packetParser.setOpenUploadInBrowser(value);
+        break;
+      case "uploadUnlisted":
+        packetParser.setUploadUnlisted(value);
         break;
       default:
         break;

@@ -72,6 +72,29 @@
       </v-col>
     </v-row>
     <v-row class="mt-5">
+      <v-col cols="auto" class="pb-0">
+        <v-row class="mb-3">
+          <v-icon icon="mdi-incognito"></v-icon>
+          &nbsp;Upload Unlisted
+        </v-row>
+        <v-row class="mb-3"
+          ><small
+            >If set, uploaded logs will only be visible to you.</small
+          ></v-row
+        >
+      </v-col>
+      <v-spacer></v-spacer>
+      <v-col class="mb-0 pb-0 pt-0 mt-0" cols="auto">
+        <v-switch
+          v-model="uploadUnlisted"
+          :label="uploadUnlisted ? 'Unlisted' : 'Public'"
+          color="green-accent-4"
+          hide-details
+          @change="handleUploadUnlistedButton"
+        ></v-switch>
+      </v-col>
+    </v-row>
+    <v-row class="mt-5">
       <v-col cols="auto" class="mb-2"
         ><v-row class="mb-3"
           ><v-icon icon="mdi-key-outline"></v-icon>&nbsp;Upload Key
@@ -158,6 +181,14 @@ export default defineComponent({
           this.error(err);
         });
 
+      this.getSetting("uploadUnlisted")
+        .then((d: { message: { value: boolean } }) => {
+          this.uploadUnlisted = d.message.value;
+        })
+        .catch((err: Error) => {
+          this.error(err);
+        });
+
       this.getApiKey()
         .then((d: { message: { value: string } }) => {
           const key = d.message.value;
@@ -200,6 +231,11 @@ export default defineComponent({
                 this.uploadLogs = value;
               }
               break;
+            case "uploadUnlisted":
+              if (this.uploadUnlisted !== value) {
+                this.uploadUnlisted = value;
+              }
+              break;
             default:
               break;
           }
@@ -227,6 +263,12 @@ export default defineComponent({
         value: this.uploadLogs,
       });
     },
+    handleUploadUnlistedButton() {
+      this.updateSetting({
+        key: "uploadUnlisted",
+        value: this.uploadUnlisted,
+      });
+    },
     handleUploadKeyChange(val: string) {
       if (val.length !== 32 && this.uploadLogs !== false) {
         this.updateSetting({
@@ -251,6 +293,7 @@ export default defineComponent({
     let showUploadButton = ref(true);
     let openInBrowserOnUpload = ref(false);
     let uploadLogs = ref(false);
+    let uploadUnlisted = ref(true);
     let uploadKey = ref("");
     let showUploadKey = ref(false);
 
@@ -258,6 +301,7 @@ export default defineComponent({
       showUploadButton,
       openInBrowserOnUpload,
       uploadLogs,
+      uploadUnlisted,
       uploadKey,
       showUploadKey,
     };
