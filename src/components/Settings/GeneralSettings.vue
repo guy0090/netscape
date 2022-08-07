@@ -23,7 +23,13 @@
           >
             {{ checkingUpdate ? "Checking..." : "Check for updates" }}
           </v-btn>
-          <v-btn v-else color="sucess" variant="contained" size="small">
+          <v-btn
+            v-else
+            color="success"
+            variant="contained"
+            size="small"
+            v-on:click="handleInstallUpdateClick"
+          >
             Install
           </v-btn>
         </v-row>
@@ -270,6 +276,7 @@ export default defineComponent({
       "updateSetting",
       "getSetting",
       "checkUpdate",
+      "installUpdate",
       "debug",
       "error",
     ]),
@@ -387,6 +394,9 @@ export default defineComponent({
           this.updateStatus = "Update downloaded";
         }
       });
+    },
+    handleInstallUpdateClick() {
+      this.installUpdate();
     },
     handleUseNpcapChange() {
       this.updateSetting({

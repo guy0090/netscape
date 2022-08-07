@@ -123,5 +123,16 @@ export const settings: Module<any, any> = {
         return err;
       }
     },
+    async installUpdate() {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (window as any).ipcBridge.invoke("toMain", {
+          message: "install-update",
+        });
+        return;
+      } catch (err) {
+        return err;
+      }
+    },
   },
 };
