@@ -361,7 +361,7 @@ export class PacketParser extends EventEmitter {
         /* case 10:
         this.onBuff(lineSplit);
         break; */
-        case 11:
+        case 12:
           this.onCounter(new LogCounterAttack(lineSplit));
           break;
       }
