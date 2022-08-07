@@ -93,10 +93,11 @@ export class PacketParser extends EventEmitter {
     super();
 
     // Config
-    this.removeOverkillDamage = config.removeOverkillDamage || true;
-    this.uploadLogs = config.uploadLogs || false;
-    this.openUploadInBrowser = config.openUploadInBrowser || false;
-    this.uploadUnlisted = config.uploadUnlisted || true;
+    this.removeOverkillDamage = config.removeOverkillDamage ?? true;
+    this.uploadLogs = config.uploadLogs ?? false;
+    this.openUploadInBrowser = config.openUploadInBrowser ?? false;
+    this.uploadUnlisted = config.uploadUnlisted ?? true;
+
     this.resetTimer = undefined;
     this.hasBossEntity = false;
     this.activeUser = {
@@ -167,6 +168,7 @@ export class PacketParser extends EventEmitter {
 
   setUploadUnlisted(uploadUnlisted: boolean) {
     this.uploadUnlisted = uploadUnlisted;
+    this.session.unlisted = uploadUnlisted;
   }
 
   resetEntities(entities: Entity[]): Entity[] {

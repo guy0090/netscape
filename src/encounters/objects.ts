@@ -26,10 +26,10 @@ export class Session {
     damageStatistics?: DamageStatistics;
   }) {
     this.id = session?.id || uuidv4();
-    this.unlisted = session?.unlisted || true;
-    this.paused = session?.paused || false;
-    this.live = session?.live || true;
-    this.protocol = session?.protocol || false;
+    this.unlisted = session?.unlisted ?? true;
+    this.paused = session?.paused ?? false;
+    this.live = session?.live ?? true;
+    this.protocol = session?.protocol ?? false;
     this.firstPacket = session?.firstPacket || 0;
     this.lastPacket = session?.lastPacket || 0;
     this.duration = session?.duration || 0;
