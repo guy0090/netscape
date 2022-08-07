@@ -595,6 +595,11 @@ export class PacketParser extends EventEmitter {
       packet.damage += packet.currentHp;
     }
 
+    if (packet.skillId === 0 && packet.skillEffectId !== 0) {
+      packet.skillId = packet.skillEffectId;
+      packet.skillName = packet.skillEffect;
+    }
+
     if (!(packet.skillId in source.skills)) {
       source.addSkill(
         packet.skillId,
