@@ -230,6 +230,24 @@ export class LogCounterAttack {
   }
 }
 
+// Logger.AppendLog(15, projectile.OwnerId.ToString("X"), entity.Name, projectile.SkillId.ToString(), BattleItem.GetBattleItemName(projectile.SkillId));
+// logId = 15
+export class LogBattleItem {
+  timestamp: number;
+  ownerId: string;
+  entityId: string;
+  itemId: number;
+  itemName: string;
+
+  constructor(lineSplit: string[]) {
+    this.timestamp = +new Date(lineSplit[1]);
+    this.ownerId = lineSplit[2];
+    this.entityId = lineSplit[3] || "Unknown Entity";
+    this.itemId = tryParseNum(lineSplit[4]);
+    this.itemName = lineSplit[5] || "Unknown Item";
+  }
+}
+
 export enum EntityType {
   UNKNOWN = -1,
   MONSTER = 0,

@@ -1,4 +1,4 @@
-import { EntityType } from "@/bridge/log-lines";
+import { EntityType, LogBattleItem } from "@/bridge/log-lines";
 import { v4 as uuidv4 } from "uuid";
 
 export class Session {
@@ -128,6 +128,7 @@ export class Entity {
   public currentHp: number;
   public maxHp: number;
   public skills: { [key: string]: Skill };
+  public battleItems: { [key: string]: BattleItem };
   public stats: Stats;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,11 +145,16 @@ export class Entity {
     this.currentHp = entity.currentHp || 0;
     this.maxHp = entity.maxHp || 0;
     this.skills = entity.skills || {};
+    this.battleItems = entity.battleItems || {};
     this.stats = new Stats(entity.stats);
   }
 
-  addSkill(id: number, content: Skill) {
-    this.skills[id] = content;
+  addSkill(content: Skill) {
+    this.skills[content.id] = content;
+  }
+
+  addBattleItem(content: BattleItem) {
+    this.battleItems[content.id] = content;
   }
 }
 
@@ -268,6 +274,32 @@ export class SkillStats {
   }
 }
 
+export class BattleItem {
+  public id: number;
+  public name: string;
+  public stats: BattleItemStats;
+
+  constructor(battleItem: {
+    id?: number;
+    name?: string;
+    stats?: BattleItemStats;
+  }) {
+    this.id = battleItem.id || 0;
+    this.name = battleItem.name || "Unknown Battle Item";
+    this.stats = battleItem.stats || new BattleItemStats();
+  }
+}
+
+export class BattleItemStats {
+  public uses: number;
+  public damage: number;
+
+  constructor(stats?: { uses?: number; damage?: number }) {
+    this.uses = stats?.uses || 0;
+    this.damage = stats?.damage || 0;
+  }
+}
+
 export class SimpleSession {
   public paused: boolean;
   public live: boolean;
@@ -307,6 +339,7 @@ export class SimpleEntity {
   public currentHp: number;
   public maxHp: number;
   public skills: SimpleSkill[];
+  public battleItems: BattleItem[];
   public stats: Stats;
 
   constructor(entity: Entity) {
@@ -322,6 +355,7 @@ export class SimpleEntity {
     this.skills = Object.values(entity.skills).map(
       (skill) => new SimpleSkill(skill)
     );
+    this.battleItems = Object.values(entity.battleItems);
     this.stats = entity.stats;
   }
 }

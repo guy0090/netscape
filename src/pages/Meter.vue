@@ -33,7 +33,7 @@
       class="main-panel"
       :style="`padding-bottom: 37px; ${
         minified ? 'display: none !important;' : ''
-      }`"
+      } overflow-x: auto;`"
     >
       <router-view
         :compact="compact"

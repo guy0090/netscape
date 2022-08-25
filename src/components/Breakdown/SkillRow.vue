@@ -285,7 +285,7 @@ export default defineComponent({
 }
 
 .skill-icon-compact,
-.skill-icon--compact > img {
+.skill-icon-compact > img {
   width: 32px;
   height: 32px;
   border-radius: 5%;

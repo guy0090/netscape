@@ -13,6 +13,7 @@ import {
   LogMessage,
   LogCounterAttack,
   LogSkillStart,
+  LogBattleItem,
   HitFlag,
   HitOption,
   RaidResult,
@@ -20,6 +21,8 @@ import {
   EntityType,
 } from "./log-lines";
 import {
+  BattleItem,
+  BattleItemStats,
   Entity,
   Session,
   Skill,
@@ -45,6 +48,7 @@ import {
   guardians,
   extraHpBars,
 } from "@/util/supported-bosses";
+import { projectileItems, battleItems } from "@/util/skills";
 import AppStore from "@/persistance/store";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -206,6 +210,7 @@ export class PacketParser extends EventEmitter {
       entity.lastUpdate = +new Date();
       entity.stats = new Stats();
       entity.skills = {};
+      entity.battleItems = {};
 
       reset.push(entity);
     }
@@ -366,6 +371,9 @@ export class PacketParser extends EventEmitter {
         case 12:
           this.onCounter(new LogCounterAttack(lineSplit));
           break;
+        case 15:
+          this.onBattleItem(new LogBattleItem(lineSplit));
+          break;
       }
 
       if (!this.session.paused) this.session.lastPacket = timestamp;
@@ -525,7 +533,6 @@ export class PacketParser extends EventEmitter {
 
       if (!(packet.skillId in source.skills)) {
         source.addSkill(
-          packet.skillId,
           new Skill({ id: packet.skillId, name: packet.skillName })
         );
       }
@@ -597,91 +604,110 @@ export class PacketParser extends EventEmitter {
       packet.damage += packet.currentHp;
     }
 
-    if (packet.skillId === 0 && packet.skillEffectId !== 0) {
-      packet.skillId = packet.skillEffectId;
-      packet.skillName = packet.skillEffect;
-    }
+    const isConsumable =
+      projectileItems.includes(packet.skillEffectId) ||
+      battleItems.includes(packet.skillEffectId);
 
-    if (!(packet.skillId in source.skills)) {
-      source.addSkill(
-        packet.skillId,
-        new Skill({ id: packet.skillId, name: packet.skillName })
-      );
-    }
+    console.log(isConsumable, packet);
+    if (isConsumable) {
+      const battleItem = source.battleItems[packet.skillEffectId];
+      if (battleItem) {
+        battleItem.stats.damage += packet.damage;
+      } else {
+        source.addBattleItem(
+          new BattleItem({
+            id: packet.skillEffectId,
+            name: packet.skillEffect,
+            stats: new BattleItemStats({ uses: 1, damage: packet.damage }),
+          })
+        );
+      }
+    } else {
+      if (packet.skillId === 0 && packet.skillEffectId !== 0) {
+        packet.skillId = packet.skillEffectId;
+        packet.skillName = packet.skillEffect;
+      }
 
-    const activeSkill = source.skills[packet.skillId];
-    if (source.type === EntityType.PLAYER && source.classId === 0) {
-      trySetClassFromSkills(source);
-    }
+      if (!(packet.skillId in source.skills)) {
+        source.addSkill(
+          new Skill({ id: packet.skillId, name: packet.skillName })
+        );
+      }
 
-    // Try to add a missing player
-    if (
-      sourceMissing &&
-      source.classId === 0 &&
-      source.type === EntityType.UNKNOWN
-    ) {
-      trySetClassFromSkills(source);
-      if (source.classId !== 0) this.session.entities.push(source);
-    }
+      const activeSkill = source.skills[packet.skillId];
+      if (source.type === EntityType.PLAYER && source.classId === 0) {
+        trySetClassFromSkills(source);
+      }
 
-    if (target.type === EntityType.PLAYER && target.classId === 0) {
-      trySetClassFromSkills(target);
-    }
+      // Try to add a missing player
+      if (
+        sourceMissing &&
+        source.classId === 0 &&
+        source.type === EntityType.UNKNOWN
+      ) {
+        trySetClassFromSkills(source);
+        if (source.classId !== 0) this.session.entities.push(source);
+      }
 
-    const hitOption: HitOption = ((damageModifier >> 4) & 0x7) - 1;
+      if (target.type === EntityType.PLAYER && target.classId === 0) {
+        trySetClassFromSkills(target);
+      }
 
-    const isCrit =
-      hitFlag === HitFlag.HIT_FLAG_CRITICAL ||
-      hitFlag === HitFlag.HIT_FLAG_DOT_CRITICAL;
-    const isBackAttack = hitOption === HitOption.HIT_OPTION_BACK_ATTACK;
-    const isFrontAttack = hitOption === HitOption.HIT_OPTION_FRONTAL_ATTACK;
+      const hitOption: HitOption = ((damageModifier >> 4) & 0x7) - 1;
 
-    const critCount = isCrit ? 1 : 0;
-    const backAttackCount = isBackAttack ? 1 : 0;
-    const frontAttackCount = isFrontAttack ? 1 : 0;
+      const isCrit =
+        hitFlag === HitFlag.HIT_FLAG_CRITICAL ||
+        hitFlag === HitFlag.HIT_FLAG_DOT_CRITICAL;
+      const isBackAttack = hitOption === HitOption.HIT_OPTION_BACK_ATTACK;
+      const isFrontAttack = hitOption === HitOption.HIT_OPTION_FRONTAL_ATTACK;
 
-    activeSkill.stats.damageDealt += packet.damage;
-    if (packet.damage > activeSkill.stats.topDamage)
-      activeSkill.stats.topDamage = packet.damage;
+      const critCount = isCrit ? 1 : 0;
+      const backAttackCount = isBackAttack ? 1 : 0;
+      const frontAttackCount = isFrontAttack ? 1 : 0;
 
-    source.stats.damageDealt += packet.damage;
-    target.stats.damageTaken += packet.damage;
+      activeSkill.stats.damageDealt += packet.damage;
+      if (packet.damage > activeSkill.stats.topDamage)
+        activeSkill.stats.topDamage = packet.damage;
 
-    source.stats.hits += 1;
-    source.stats.crits += critCount;
-    source.stats.backHits += backAttackCount;
-    source.stats.frontHits += frontAttackCount;
+      source.stats.damageDealt += packet.damage;
+      target.stats.damageTaken += packet.damage;
 
-    activeSkill.stats.hits += 1;
-    activeSkill.stats.crits += critCount;
-    activeSkill.stats.backHits += backAttackCount;
-    activeSkill.stats.frontHits += frontAttackCount;
+      source.stats.hits += 1;
+      source.stats.crits += critCount;
+      source.stats.backHits += backAttackCount;
+      source.stats.frontHits += frontAttackCount;
 
-    if (source.type === EntityType.PLAYER) {
-      activeSkill.breakdown?.push(
-        new SkillBreakdown({
-          timestamp: +new Date(),
-          damage: packet.damage,
-          isCrit: isCrit,
-          isBackHit: isBackAttack,
-          isFrontHit: isFrontAttack,
-          targetEntity: target.id,
-        })
-      );
+      activeSkill.stats.hits += 1;
+      activeSkill.stats.crits += critCount;
+      activeSkill.stats.backHits += backAttackCount;
+      activeSkill.stats.frontHits += frontAttackCount;
 
-      this.session.damageStatistics.totalDamageDealt += packet.damage;
-      this.session.damageStatistics.topDamageDealt = Math.max(
-        this.session.damageStatistics.topDamageDealt,
-        source.stats.damageDealt
-      );
-    }
+      if (source.type === EntityType.PLAYER) {
+        activeSkill.breakdown?.push(
+          new SkillBreakdown({
+            timestamp: +new Date(),
+            damage: packet.damage,
+            isCrit: isCrit,
+            isBackHit: isBackAttack,
+            isFrontHit: isFrontAttack,
+            targetEntity: target.id,
+          })
+        );
 
-    if (target.type === EntityType.PLAYER) {
-      this.session.damageStatistics.totalDamageTaken += packet.damage;
-      this.session.damageStatistics.topDamageTaken = Math.max(
-        this.session.damageStatistics.topDamageTaken,
-        target.stats.damageTaken
-      );
+        this.session.damageStatistics.totalDamageDealt += packet.damage;
+        this.session.damageStatistics.topDamageDealt = Math.max(
+          this.session.damageStatistics.topDamageDealt,
+          source.stats.damageDealt
+        );
+      }
+
+      if (target.type === EntityType.PLAYER) {
+        this.session.damageStatistics.totalDamageTaken += packet.damage;
+        this.session.damageStatistics.topDamageTaken = Math.max(
+          this.session.damageStatistics.topDamageTaken,
+          target.stats.damageTaken
+        );
+      }
     }
 
     const boss = this.getBoss();
@@ -735,6 +761,25 @@ export class PacketParser extends EventEmitter {
     if (source) {
       source.lastUpdate = +new Date();
       source.stats.counters += 1;
+    }
+  }
+
+  // logId = 15
+  onBattleItem(packet: LogBattleItem) {
+    const source = this.getEntity(packet.ownerId);
+
+    if (source && source.type === EntityType.PLAYER) {
+      source.lastUpdate = +new Date();
+      if (!(packet.itemId in source.battleItems)) {
+        source.addBattleItem(
+          new BattleItem({
+            id: packet.itemId,
+            name: packet.itemName,
+          })
+        );
+      }
+      const item = source.battleItems[packet.itemId];
+      item.stats.uses += 1;
     }
   }
 
