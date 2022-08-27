@@ -35,9 +35,9 @@ export default defineComponent({
   methods: {
     getIcon() {
       try {
-        return require(`@/assets/sprites/skills/${this.item?.id}.webp`);
+        return require(`@/assets/sprites/skills/${this.item?.id}.avif`);
       } catch {
-        return require("@/assets/sprites/emojis/42.webp");
+        return require("@/assets/sprites/emojis/42.avif");
       }
     },
     abbrNum(number: number, decPlaces: number) {

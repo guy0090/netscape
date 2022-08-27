@@ -608,7 +608,6 @@ export class PacketParser extends EventEmitter {
       projectileItems.includes(packet.skillEffectId) ||
       battleItems.includes(packet.skillEffectId);
 
-    console.log(isConsumable, packet);
     if (isConsumable) {
       const battleItem = source.battleItems[packet.skillEffectId];
       if (battleItem) {

@@ -51,6 +51,34 @@
       :key="i"
       :item="item"
     />
+
+    <v-card
+      :rounded="0"
+      class="border-b-md"
+      v-if="getSkills().length === 0 && tab === 'skills'"
+    >
+      <v-card-content style="user-select: none">
+        <v-row align="center" justify="center" class="pb-1 pt-1">
+          <v-col cols="auto" class="py-0 ps-0 pe-2">
+            <h3>No SKills</h3>
+          </v-col>
+        </v-row>
+      </v-card-content>
+    </v-card>
+
+    <v-card
+      :rounded="0"
+      class="border-b-md"
+      v-if="getBattleItems().length === 0 && tab !== 'skills'"
+    >
+      <v-card-content style="user-select: none">
+        <v-row align="center" justify="center" class="pb-1 pt-1">
+          <v-col cols="auto" class="py-0 ps-0 pe-2">
+            <h3>No Battle Items</h3>
+          </v-col>
+        </v-row>
+      </v-card-content>
+    </v-card>
   </div>
 </template>
 

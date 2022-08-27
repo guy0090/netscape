@@ -124,9 +124,9 @@ export default defineComponent({
     },
     getSkillIcon() {
       try {
-        return require(`@/assets/sprites/skills/${this.skill?.id}.webp`);
+        return require(`@/assets/sprites/skills/${this.skill?.id}.avif`);
       } catch {
-        return require("@/assets/sprites/emojis/42.webp");
+        return require("@/assets/sprites/emojis/42.avif");
       }
     },
     getSkillDps() {
@@ -292,87 +292,87 @@ export default defineComponent({
 }
 
 .bg-102 {
-  background-image: url("@/assets/sprites/class-colors/102.webp");
+  background-image: url("@/assets/sprites/class-colors/102.avif");
   background-repeat: repeat-y;
 }
 .bg-103 {
-  background-image: url("@/assets/sprites/class-colors/103.webp");
+  background-image: url("@/assets/sprites/class-colors/103.avif");
   background-repeat: repeat-y;
 }
 .bg-104 {
-  background-image: url("@/assets/sprites/class-colors/104.webp");
+  background-image: url("@/assets/sprites/class-colors/104.avif");
   background-repeat: repeat-y;
 }
 .bg-105 {
-  background-image: url("@/assets/sprites/class-colors/105.webp");
+  background-image: url("@/assets/sprites/class-colors/105.avif");
   background-repeat: repeat-y;
 }
 .bg-202 {
-  background-image: url("@/assets/sprites/class-colors/202.webp");
+  background-image: url("@/assets/sprites/class-colors/202.avif");
   background-repeat: repeat-y;
 }
 .bg-203 {
-  background-image: url("@/assets/sprites/class-colors/203.webp");
+  background-image: url("@/assets/sprites/class-colors/203.avif");
   background-repeat: repeat-y;
 }
 .bg-204 {
-  background-image: url("@/assets/sprites/class-colors/204.webp");
+  background-image: url("@/assets/sprites/class-colors/204.avif");
   background-repeat: repeat-y;
 }
 .bg-205 {
-  background-image: url("@/assets/sprites/class-colors/205.webp");
+  background-image: url("@/assets/sprites/class-colors/205.avif");
   background-repeat: repeat-y;
 }
 .bg-302 {
-  background-image: url("@/assets/sprites/class-colors/302.webp");
+  background-image: url("@/assets/sprites/class-colors/302.avif");
   background-repeat: repeat-y;
 }
 .bg-303 {
-  background-image: url("@/assets/sprites/class-colors/303.webp");
+  background-image: url("@/assets/sprites/class-colors/303.avif");
   background-repeat: repeat-y;
 }
 .bg-304 {
-  background-image: url("@/assets/sprites/class-colors/304.webp");
+  background-image: url("@/assets/sprites/class-colors/304.avif");
   background-repeat: repeat-y;
 }
 .bg-305 {
-  background-image: url("@/assets/sprites/class-colors/305.webp");
+  background-image: url("@/assets/sprites/class-colors/305.avif");
   background-repeat: repeat-y;
 }
 .bg-312 {
-  background-image: url("@/assets/sprites/class-colors/312.webp");
+  background-image: url("@/assets/sprites/class-colors/312.avif");
   background-repeat: repeat-y;
 }
 .bg-402 {
-  background-image: url("@/assets/sprites/class-colors/402.webp");
+  background-image: url("@/assets/sprites/class-colors/402.avif");
   background-repeat: repeat-y;
 }
 .bg-403 {
-  background-image: url("@/assets/sprites/class-colors/403.webp");
+  background-image: url("@/assets/sprites/class-colors/403.avif");
   background-repeat: repeat-y;
 }
 .bg-404 {
-  background-image: url("@/assets/sprites/class-colors/404.webp");
+  background-image: url("@/assets/sprites/class-colors/404.avif");
   background-repeat: repeat-y;
 }
 .bg-502 {
-  background-image: url("@/assets/sprites/class-colors/502.webp");
+  background-image: url("@/assets/sprites/class-colors/502.avif");
   background-repeat: repeat-y;
 }
 .bg-503 {
-  background-image: url("@/assets/sprites/class-colors/503.webp");
+  background-image: url("@/assets/sprites/class-colors/503.avif");
   background-repeat: repeat-y;
 }
 .bg-504 {
-  background-image: url("@/assets/sprites/class-colors/504.webp");
+  background-image: url("@/assets/sprites/class-colors/504.avif");
   background-repeat: repeat-y;
 }
 .bg-505 {
-  background-image: url("@/assets/sprites/class-colors/505.webp");
+  background-image: url("@/assets/sprites/class-colors/505.avif");
   background-repeat: repeat-y;
 }
 .bg-512 {
-  background-image: url("@/assets/sprites/class-colors/512.webp");
+  background-image: url("@/assets/sprites/class-colors/512.avif");
   background-repeat: repeat-y;
 }
 </style>
