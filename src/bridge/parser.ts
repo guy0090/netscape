@@ -19,6 +19,7 @@ import {
   RaidResult,
   LogPhaseTransition,
   EntityType,
+  LogBuff,
 } from "./log-lines";
 import {
   BattleItem,
@@ -91,6 +92,9 @@ export class PacketParser extends EventEmitter {
   private previousSession: Session | undefined;
   private activeUser: ActiveUser;
   private appStore: AppStore;
+
+  // TODO: Temp workaround for valtan ghost phase
+  private valtanGhostId: string | undefined = undefined;
 
   constructor(appStore: AppStore, config: PacketParserConfig = {}) {
     // Extend
@@ -262,6 +266,7 @@ export class PacketParser extends EventEmitter {
 
       this.hasBossEntity = this.hasBoss(this.session.entities);
       this.resetTimer = undefined;
+      this.valtanGhostId = "";
 
       logger.parser("Reset session", this.session.entities);
       this.emit("reset-session", this.session.toSimpleObject());
@@ -486,7 +491,10 @@ export class PacketParser extends EventEmitter {
     else packet.type = EntityType.MONSTER;
 
     // TODO: name is passed in korean
-    if (packet.npcId === 42060070) packet.name = "Ravaged Tyrant of Beasts";
+    if (packet.npcId === 42060070) {
+      packet.name = "Ravaged Tyrant of Beasts";
+      packet.id = this.valtanGhostId as string;
+    }
 
     let npc = this.getEntity(packet.id); // || this.getEntity(packet.name, true);
     if (npc) {
@@ -750,6 +758,16 @@ export class PacketParser extends EventEmitter {
     if (source) {
       source.lastUpdate = +new Date();
       source.stats.healing += packet.healAmount;
+    }
+  }
+
+  onBuff(packet: LogBuff) {
+    // TODO: Workaround for valtan ghost damage
+    if (
+      packet.buffName ===
+      "하얗게 불사르고 망령화_마수군단장의 근성 감소 버프 제거 인보크 버프"
+    ) {
+      this.valtanGhostId = packet.sourceId;
     }
   }
 
