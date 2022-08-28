@@ -494,6 +494,14 @@ export class PacketParser extends EventEmitter {
     if (packet.npcId === 42060070) {
       packet.name = "Ravaged Tyrant of Beasts";
       packet.id = this.valtanGhostId as string;
+
+      this.emit("hide-hp", []);
+      this.emit("show-hp", {
+        bars: extraHpBars[packet.npcId].bars,
+        currentHp: packet.currentHp,
+        maxHp: packet.maxHp,
+        bossName: packet.name,
+      });
     }
 
     let npc = this.getEntity(packet.id); // || this.getEntity(packet.name, true);
