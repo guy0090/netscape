@@ -27,8 +27,8 @@ module.exports = defineConfig({
             to: "oo2net_9_win64.dll",
           },
           {
-            from: "binary/0372baa9-34b6-4b44-a8a6-c9e06233cf2b.exe",
-            to: "0372baa9-34b6-4b44-a8a6-c9e06233cf2b.exe",
+            from: "binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
+            to: "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
           },
         ],
         fileAssociations: [

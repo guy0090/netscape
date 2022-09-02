@@ -23,6 +23,8 @@ import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
 import { Session } from "@/encounters/objects";
 
+app.disableHardwareAcceleration();
+
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { secure: true, standard: true } },

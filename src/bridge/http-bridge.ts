@@ -83,10 +83,10 @@ export class HttpBridge extends EventEmitter {
       if (isDevelopment) {
         binaryFile = path.resolve(
           __dirname,
-          "../binary/0372baa9-34b6-4b44-a8a6-c9e06233cf2b.exe"
+          "../binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe"
         );
       } else {
-        binaryFile = "0372baa9-34b6-4b44-a8a6-c9e06233cf2b.exe";
+        binaryFile = "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe";
       }
 
       this.lostArkLogger = spawn(binaryFile, args);
