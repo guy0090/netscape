@@ -30,6 +30,10 @@ module.exports = defineConfig({
             from: "binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
             to: "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
           },
+          {
+            from: "binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe.ini",
+            to: "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe.ini",
+          },
         ],
         fileAssociations: [
           {
