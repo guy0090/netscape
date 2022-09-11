@@ -6,14 +6,18 @@ import { EventEmitter } from "events";
 import path from "path";
 import { app } from "electron";
 import { AddressInfo } from "net";
+import { LogMessage } from "./log-lines";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 export class HttpBridge extends EventEmitter {
-  private port = 34536;
+  private port = 1338;
   public httpServer: Server | undefined = undefined;
   public lostArkLogger: ChildProcessWithoutNullStreams | undefined = undefined;
   public validHosts: string[] = [];
+
+  public connected = false;
+  public lastPacket = -1;
 
   constructor(appStore: AppStore) {
     // Extend
@@ -35,8 +39,10 @@ export class HttpBridge extends EventEmitter {
   public startBridge(appStore: AppStore) {
     this.httpServer = createServer((req, res) => {
       const isHostValid = this.checkHost(req.headers.host);
+
       if (!isHostValid) {
         logger.error("Request Invalid Host", { host: req.headers.host });
+
         res.writeHead(403, { "Content-Type": "text/html" });
         return res.end("Forbidden");
       }
@@ -52,6 +58,21 @@ export class HttpBridge extends EventEmitter {
           const parsedBody = Buffer.concat(body).toString();
           // const data = this.fromBase64(parsedBody);
           this.emit("packet", parsedBody);
+          this.connected = true;
+          this.lastPacket = Date.now();
+
+          if (parsedBody.split("|")[0] === "255") {
+            const sys = new LogMessage(parsedBody.split("|"));
+            if (sys.message === "Exiting") {
+              this.connected = false;
+              this.emit("rcap_disconnected");
+              logger.debug("Lost connection to packet capturer");
+            } else if (sys.message === "Connected") {
+              this.connected = true;
+              this.emit("rcap_connected");
+              logger.debug("Connected to packet capturer");
+            }
+          }
 
           res.writeHead(200, { "Content-Type": "text/html" });
           res.end();
@@ -62,10 +83,18 @@ export class HttpBridge extends EventEmitter {
     this.httpServer.listen(this.port, "localhost", () => {
       const addr = this.httpServer?.address() as AddressInfo;
 
-      logger.info("Server Listening", addr);
-      this.validHosts.push(`localhost:${addr.port}`, `127.0.0.1:${addr.port}`);
+      logger.info(
+        `Server Listening ${addr.address}:${addr.port}`,
+        `${addr}:${addr.port}`
+      );
+      this.validHosts.push(
+        `localhost:${addr.port}`,
+        `127.0.0.1:${addr.port}`,
+        `host.docker.internal:${addr.port}`
+      );
       this.emit("listen");
-      this.spawnPacketCapturer(appStore);
+      // this.spawnPacketCapturer(appStore);
+      this.lastPacket = Date.now();
     });
 
     this.httpServer.on("close", () => {

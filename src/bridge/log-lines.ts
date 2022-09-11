@@ -3,14 +3,20 @@ import { tryParseNum } from "@/encounters/objects";
 
 export const LINE_SPLIT_CHAR = "|";
 
-// logId = 0
+// logId = 255
 export class LogMessage {
   timestamp: string;
   message: string | unknown;
+  host?: string;
+  port?: number;
 
   constructor(lineSplit: string[]) {
     this.timestamp = lineSplit[1];
     this.message = lineSplit[2];
+    if (lineSplit.length > 2) {
+      this.host = lineSplit[3];
+      this.port = tryParseNum(lineSplit[4]);
+    }
   }
 }
 
