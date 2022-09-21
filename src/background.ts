@@ -366,7 +366,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.6.0.1");
+  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.7.1.1");
 
   overlayWindow.on("attach", () => {
     attached = true;
@@ -396,19 +396,19 @@ function makeInteractive() {
 }
 
 // Quit when all windows are closed.
-app.on("window-all-closed", () => {
+app.on("window-all-closed", async () => {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== "darwin") {
     try {
       packetParser.stopBroadcasting();
-      httpBridge.stop();
+      await httpBridge.stop();
       // electronBridge.closeConnection();
       clearInterval(updateInterval);
+      app.quit();
     } catch {
-      // ignore
+      app.exit();
     }
-    app.quit();
   }
 });
 
@@ -586,6 +586,8 @@ app.on("second-instance", (_e, argv) => {
     } else {
       logger.debug("No encounter file specified, doing nothing");
     }
+  } else {
+    app.exit();
   }
 });
 

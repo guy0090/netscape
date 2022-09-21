@@ -87,6 +87,7 @@ export class HttpBridge extends EventEmitter {
         `Server Listening ${addr.address}:${addr.port}`,
         `${addr}:${addr.port}`
       );
+
       this.validHosts.push(
         `localhost:${addr.port}`,
         `127.0.0.1:${addr.port}`,
@@ -135,11 +136,19 @@ export class HttpBridge extends EventEmitter {
     });
   }
 
-  public stop() {
-    try {
-      this.httpServer?.close();
-    } catch (e) {
-      logger.error("Error while trying to stop http bridge", e);
-    }
+  public stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.httpServer) {
+        this.httpServer.close((err) => {
+          if (err) {
+            logger.error("Error while closing http server", err);
+            reject(err);
+          } else {
+            logger.info("Http server closed");
+            resolve();
+          }
+        });
+      }
+    });
   }
 }

@@ -21,20 +21,6 @@ module.exports = defineConfig({
         productName: "Netscape Navigator",
         appId: "netscape.app",
         publish: ["github"],
-        extraFiles: [
-          {
-            from: "binary/oo2net_9_win64.dll",
-            to: "oo2net_9_win64.dll",
-          },
-          {
-            from: "binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
-            to: "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe",
-          },
-          {
-            from: "binary/49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe.ini",
-            to: "49ee656f-9dfa-452f-be9b-ec6c698a20e7.exe.ini",
-          },
-        ],
         fileAssociations: [
           {
             ext: "enc",
