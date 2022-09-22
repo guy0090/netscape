@@ -1,5 +1,6 @@
 "use strict";
 
+import winctl from "winctl";
 import path from "path";
 import { logger } from "@/util/logging";
 import ms from "ms";
@@ -48,7 +49,7 @@ export const parserConfig: PacketParserConfig = {
   uploadUnlisted: appStore.get("uploadUnlisted") as boolean,
 };
 
-export const windowMode = appStore.get("windowMode") as number;
+export let windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow | undefined;
 export let hpBarWin: BrowserWindow | undefined;
 export let attached = false;
@@ -458,6 +459,17 @@ app.on("ready", async () => {
       DamageMeterEvents.initialize(appStore);
 
       const { width } = screen.getPrimaryDisplay().size;
+
+      const lostArkWindow = winctl.GetWindowByClassName(
+        "EFLaunchUnrealUWindowsClient"
+      );
+
+      // If the Lost Ark client isn't opened, ignore the overlay setting
+      // TODO: Wait until client is open, then spawn window
+      if (lostArkWindow.getTitle() === "" && windowMode !== 0) {
+        windowMode = 0;
+        logger.info("Game client not open, ignoring overlay mode");
+      }
 
       // Create main window
       createWindow();
