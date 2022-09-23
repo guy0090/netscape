@@ -356,7 +356,7 @@ async function createHpBar(screenWidth: number) {
   }
 }
 
-function initOverlay() {
+function initOverlay(title: string) {
   if (!win) return;
 
   const { width, height } = appStore.get("meterDimensions") as Record<
@@ -367,7 +367,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.7.1.1");
+  overlayWindow.attachTo(win, title);
 
   overlayWindow.on("attach", () => {
     attached = true;
@@ -460,15 +460,25 @@ app.on("ready", async () => {
 
       const { width } = screen.getPrimaryDisplay().size;
 
+      const windowRgx = /LOST ARK \(64-bit, DX11\) v.[0-9].[0-9].[0-9].[0-9]/;
       const lostArkWindow = winctl.GetWindowByClassName(
         "EFLaunchUnrealUWindowsClient"
       );
 
+      const invalidTitle =
+        lostArkWindow.getTitle() === "" ||
+        !windowRgx.test(lostArkWindow.getTitle());
+
       // If the Lost Ark client isn't opened, ignore the overlay setting
       // TODO: Wait until client is open, then spawn window
-      if (lostArkWindow.getTitle() === "" && windowMode !== 0) {
+      if (invalidTitle && windowMode !== 0) {
         windowMode = 0;
         logger.info("Game client not open, ignoring overlay mode");
+      } else {
+        logger.info(
+          `Game Client Open - Attaching to Window: '${lostArkWindow.getTitle()}'`,
+          { gameMonitor: lostArkWindow.getMonitor() }
+        );
       }
 
       // Create main window
@@ -563,7 +573,7 @@ app.on("ready", async () => {
         logger.debug("Attaching overlay");
         // Attach overlay delayed
         setTimeout(() => {
-          initOverlay();
+          initOverlay(lostArkWindow.getTitle());
         }, 1000);
       }
     });
