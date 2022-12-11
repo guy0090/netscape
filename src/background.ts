@@ -1,5 +1,6 @@
 "use strict";
 
+import winctl from "winctl";
 import path from "path";
 import { logger } from "@/util/logging";
 import ms from "ms";
@@ -22,6 +23,8 @@ import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
 import { Session } from "@/encounters/objects";
+
+app.disableHardwareAcceleration();
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -46,7 +49,7 @@ export const parserConfig: PacketParserConfig = {
   uploadUnlisted: appStore.get("uploadUnlisted") as boolean,
 };
 
-export const windowMode = appStore.get("windowMode") as number;
+export let windowMode = appStore.get("windowMode") as number;
 export let win: BrowserWindow | undefined;
 export let hpBarWin: BrowserWindow | undefined;
 export let attached = false;
@@ -353,7 +356,7 @@ async function createHpBar(screenWidth: number) {
   }
 }
 
-function initOverlay() {
+function initOverlay(title: string) {
   if (!win) return;
 
   const { width, height } = appStore.get("meterDimensions") as Record<
@@ -364,7 +367,7 @@ function initOverlay() {
 
   win.setIgnoreMouseEvents(false);
   makeInteractive();
-  overlayWindow.attachTo(win, "LOST ARK (64-bit, DX11) v.2.6.0.1");
+  overlayWindow.attachTo(win, title);
 
   overlayWindow.on("attach", () => {
     attached = true;
@@ -394,19 +397,19 @@ function makeInteractive() {
 }
 
 // Quit when all windows are closed.
-app.on("window-all-closed", () => {
+app.on("window-all-closed", async () => {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== "darwin") {
     try {
       packetParser.stopBroadcasting();
-      httpBridge.stop();
+      await httpBridge.stop();
       // electronBridge.closeConnection();
       clearInterval(updateInterval);
+      app.quit();
     } catch {
-      // ignore
+      app.exit();
     }
-    app.quit();
   }
 });
 
@@ -456,6 +459,27 @@ app.on("ready", async () => {
       DamageMeterEvents.initialize(appStore);
 
       const { width } = screen.getPrimaryDisplay().size;
+
+      const windowRgx = /LOST ARK \(64-bit, DX11\) v.[0-9].[0-9].[0-9].[0-9]/;
+      const lostArkWindow = winctl.GetWindowByClassName(
+        "EFLaunchUnrealUWindowsClient"
+      );
+
+      const invalidTitle =
+        lostArkWindow.getTitle() === "" ||
+        !windowRgx.test(lostArkWindow.getTitle());
+
+      // If the Lost Ark client isn't opened, ignore the overlay setting
+      // TODO: Wait until client is open, then spawn window
+      if (invalidTitle && windowMode !== 0) {
+        windowMode = 0;
+        logger.info("Game client not open, ignoring overlay mode");
+      } else {
+        logger.info(
+          `Game Client Open - Attaching to Window: '${lostArkWindow.getTitle()}'`,
+          { gameMonitor: lostArkWindow.getMonitor() }
+        );
+      }
 
       // Create main window
       createWindow();
@@ -549,7 +573,7 @@ app.on("ready", async () => {
         logger.debug("Attaching overlay");
         // Attach overlay delayed
         setTimeout(() => {
-          initOverlay();
+          initOverlay(lostArkWindow.getTitle());
         }, 1000);
       }
     });
@@ -584,6 +608,8 @@ app.on("second-instance", (_e, argv) => {
     } else {
       logger.debug("No encounter file specified, doing nothing");
     }
+  } else {
+    app.exit();
   }
 });
 
