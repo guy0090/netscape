@@ -7,6 +7,7 @@ import { createStore } from "vuex";
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 export default createStore({
+  modules: { settings, sessions, util },
   getters: {},
   mutations: {},
   actions: {
@@ -42,5 +43,4 @@ export default createStore({
       console.error(...args);
     },
   },
-  modules: { settings, sessions, util },
 });

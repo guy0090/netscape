@@ -3,6 +3,9 @@ export const abyssRaids = [
   634000, // P1?
   634010, // P2?
   634020, // P3?
+  // Mystic?
+  633140,
+  633141,
 ];
 
 export const raidBosses = [

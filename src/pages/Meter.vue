@@ -53,7 +53,7 @@
         </v-col>
         <v-divider vertical class="me-2"></v-divider>
         <v-col cols="auto">
-          <v-row class="pb-2">
+          <v-row class="pb-0">
             <small
               >Total Damage:
               {{
@@ -61,7 +61,7 @@
               }}</small
             >
           </v-row>
-          <v-row>
+          <v-row class="mt-2">
             <small>Party DPS: {{ getSessionDPS() }}/s</small>
           </v-row>
         </v-col>
