@@ -6,7 +6,6 @@ import { logger } from "@/util/logging";
 import ms from "ms";
 import {
   app,
-  dialog,
   screen,
   protocol,
   Tray,
@@ -17,8 +16,7 @@ import {
 import { autoUpdater } from "electron-updater";
 import { overlayWindow } from "electron-overlay-window";
 // import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
-import { ElectronBridge } from "@/bridge/electron-bridge";
-import { HttpBridge } from "@/bridge/http-bridge";
+import LostArkLogger from "@/bridge/logger";
 import DamageMeterEvents from "@/ipc/damage-meter";
 import { PacketParser, PacketParserConfig } from "@/bridge/parser";
 import AppStore from "@/persistance/store";
@@ -36,8 +34,7 @@ export const isDevelopment = process.env.NODE_ENV !== "production";
 export const gotAppLock = app.requestSingleInstanceLock();
 export const appStore = new AppStore();
 
-export let httpBridge: HttpBridge;
-export let electronBridge: ElectronBridge;
+export let loaLogger: LostArkLogger;
 export let packetParser: PacketParser;
 
 export const parserConfig: PacketParserConfig = {
@@ -69,7 +66,7 @@ function setupTray() {
       click() {
         try {
           packetParser.stopBroadcasting();
-          httpBridge.stop();
+          loaLogger.stop();
           // electronBridge.closeConnection();
           clearInterval(updateInterval);
         } catch {
@@ -192,7 +189,7 @@ async function createWindow() {
 
   win.on("close", () => {
     packetParser?.stopBroadcasting();
-    httpBridge?.stop();
+    loaLogger?.stop();
     hpBarWin?.destroy();
 
     app.quit();
@@ -403,7 +400,7 @@ app.on("window-all-closed", async () => {
   if (process.platform !== "darwin") {
     try {
       packetParser.stopBroadcasting();
-      await httpBridge.stop();
+      loaLogger.stop();
       // electronBridge.closeConnection();
       clearInterval(updateInterval);
       app.quit();
@@ -422,161 +419,144 @@ app.on("ready", async () => {
     app.quit();
   } else {
     try {
-      // electronBridge = new ElectronBridge(appStore);
-      httpBridge = new HttpBridge(appStore);
+      loaLogger = new LostArkLogger();
+      await loaLogger.start();
+
+      logger.debug(`Logger started - Listening on device: ${loaLogger.device}`);
     } catch (err) {
       logger.error("Failed to initialize electron bridge", err);
       app.quit();
     }
 
-    // Wait for connection to logger
-    // electronBridge.on("ready", () => {
-    httpBridge.on("listen", () => {
-      packetParser = new PacketParser(appStore, parserConfig);
+    packetParser = new PacketParser(appStore, parserConfig);
 
-      // Start processing packets
-      packetParser.startBroadcasting(200);
-      // electronBridge.on("packet", (packet) => {
-      httpBridge.on("packet", (packet) => {
-        packetParser.parse(packet);
-      });
+    // Start processing packets
+    packetParser.startBroadcasting(200);
+    loaLogger.on("packet", (packet) => {
+      packetParser.parse(packet);
+    });
 
-      httpBridge.on("close", () => {
-        try {
-          packetParser.stopBroadcasting();
-          clearInterval(updateInterval);
-          app.quit();
-        } catch (err) {
-          dialog.showErrorBox(
-            "Error",
-            "Disconnected from logger process; Exiting app."
-          );
-          app.exit();
-        }
-      });
+    // Initialize IPC events for window context
+    DamageMeterEvents.initialize(appStore);
 
-      // Initialize IPC events for window context
-      DamageMeterEvents.initialize(appStore);
+    const { width } = screen.getPrimaryDisplay().size;
 
-      const { width } = screen.getPrimaryDisplay().size;
+    const windowRgx = /LOST ARK \(64-bit, DX11\) v.[0-9].[0-9].[0-9].[0-9]/;
+    const lostArkWindow = winctl.GetWindowByClassName(
+      "EFLaunchUnrealUWindowsClient"
+    );
 
-      const windowRgx = /LOST ARK \(64-bit, DX11\) v.[0-9].[0-9].[0-9].[0-9]/;
-      const lostArkWindow = winctl.GetWindowByClassName(
-        "EFLaunchUnrealUWindowsClient"
+    const invalidTitle =
+      lostArkWindow.getTitle() === "" ||
+      !windowRgx.test(lostArkWindow.getTitle());
+
+    // If the Lost Ark client isn't opened, ignore the overlay setting
+    // TODO: Wait until client is open, then spawn window
+    if (invalidTitle && windowMode !== 0) {
+      windowMode = 0;
+      logger.info("Game client not open, ignoring overlay mode");
+    } else {
+      logger.info(
+        `Game Client Open - Attaching to Window: '${lostArkWindow.getTitle()}'`,
+        { gameMonitor: lostArkWindow.getMonitor() }
       );
+    }
 
-      const invalidTitle =
-        lostArkWindow.getTitle() === "" ||
-        !windowRgx.test(lostArkWindow.getTitle());
+    // Create main window
+    createWindow();
+    createHpBar(width);
 
-      // If the Lost Ark client isn't opened, ignore the overlay setting
-      // TODO: Wait until client is open, then spawn window
-      if (invalidTitle && windowMode !== 0) {
-        windowMode = 0;
-        logger.info("Game client not open, ignoring overlay mode");
-      } else {
-        logger.info(
-          `Game Client Open - Attaching to Window: '${lostArkWindow.getTitle()}'`,
-          { gameMonitor: lostArkWindow.getMonitor() }
-        );
-      }
-
-      // Create main window
-      createWindow();
-      createHpBar(width);
-
-      // Start packet parser events
-      packetParser.on("session-broadcast", (data: Session) => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "session",
-            message: data,
-          });
-      });
-
-      packetParser.on("raid-end", (data) => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "end-session",
-            message: data,
-          });
-      });
-
-      packetParser.on("show-hp", async (data) => {
-        if (!hpBarWin) await createHpBar(width);
-
-        if (hpBarWin?.isMinimized() || !hpBarWin?.isVisible()) {
-          hpBarWin?.show();
-        }
-        hpBarWin?.webContents.send("fromMain", {
-          event: "init-enc",
+    // Start packet parser events
+    packetParser.on("session-broadcast", (data: Session) => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "session",
           message: data,
         });
+    });
+
+    packetParser.on("raid-end", (data) => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "end-session",
+          message: data,
+        });
+    });
+
+    packetParser.on("show-hp", async (data) => {
+      if (!hpBarWin) await createHpBar(width);
+
+      if (hpBarWin?.isMinimized() || !hpBarWin?.isVisible()) {
+        hpBarWin?.show();
+      }
+      hpBarWin?.webContents.send("fromMain", {
+        event: "init-enc",
+        message: data,
       });
+    });
 
-      packetParser.on("boss-damaged", (data) => {
-        if (hpBarWin) {
-          hpBarWin.webContents.send("fromMain", {
-            event: "boss-damaged",
-            message: data,
-          });
-        }
-      });
-
-      packetParser.on("hide-hp", () => {
-        const beingModified = appStore.get("hpBarClickable") as boolean;
-        logger.debug("Hiding HP Bar", { beingModified });
-        if (hpBarWin && !beingModified) {
-          // hpBarWin.minimize();
-          hpBarWin.hide();
-
-          hpBarWin.webContents.send("fromMain", {
-            event: "end-enc",
-          });
-          logger.debug("Hid HP Bar");
-        }
-      });
-
-      packetParser.on("pause-session", (data) => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "pause-session",
-            message: data,
-          });
-      });
-
-      packetParser.on("resume-session", (data) => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "resume-session",
-            message: data,
-          });
-      });
-
-      packetParser.on("reset-session", (data) => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "reset-session",
-            message: data,
-          });
-      });
-
-      packetParser.on("zone-change", () => {
-        if (win)
-          win.webContents.send("fromMain", {
-            event: "zone-change",
-            message: "",
-          });
-      });
-
-      if (windowMode === 1) {
-        logger.debug("Attaching overlay");
-        // Attach overlay delayed
-        setTimeout(() => {
-          initOverlay(lostArkWindow.getTitle());
-        }, 1000);
+    packetParser.on("boss-damaged", (data) => {
+      if (hpBarWin) {
+        hpBarWin.webContents.send("fromMain", {
+          event: "boss-damaged",
+          message: data,
+        });
       }
     });
+
+    packetParser.on("hide-hp", () => {
+      const beingModified = appStore.get("hpBarClickable") as boolean;
+      logger.debug("Hiding HP Bar", { beingModified });
+      if (hpBarWin && !beingModified) {
+        // hpBarWin.minimize();
+        hpBarWin.hide();
+
+        hpBarWin.webContents.send("fromMain", {
+          event: "end-enc",
+        });
+        logger.debug("Hid HP Bar");
+      }
+    });
+
+    packetParser.on("pause-session", (data) => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "pause-session",
+          message: data,
+        });
+    });
+
+    packetParser.on("resume-session", (data) => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "resume-session",
+          message: data,
+        });
+    });
+
+    packetParser.on("reset-session", (data) => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "reset-session",
+          message: data,
+        });
+    });
+
+    packetParser.on("zone-change", () => {
+      if (win)
+        win.webContents.send("fromMain", {
+          event: "zone-change",
+          message: "",
+        });
+    });
+
+    if (windowMode === 1) {
+      logger.debug("Attaching overlay");
+      // Attach overlay delayed
+      setTimeout(() => {
+        initOverlay(lostArkWindow.getTitle());
+      }, 1000);
+    }
 
     /*
     electronBridge.on("disconnected", () => {
@@ -620,7 +600,7 @@ if (isDevelopment) {
       if (data === "graceful-exit") {
         packetParser.stopBroadcasting();
         // electronBridge.closeConnection();
-        httpBridge.stop();
+        loaLogger.stop();
         clearInterval(updateInterval);
         clearInterval(updateInterval);
         app.quit();
@@ -630,7 +610,7 @@ if (isDevelopment) {
     process.on("SIGTERM", () => {
       packetParser.stopBroadcasting();
       // electronBridge.closeConnection();
-      httpBridge.stop();
+      loaLogger.stop();
       clearInterval(updateInterval);
       app.quit();
     });
