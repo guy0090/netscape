@@ -45,6 +45,7 @@ export default class LostArkLogger extends EventEmitter {
     this.parseMeterData();
 
     this._legacyLogger = new LegacyLogger(this._pktStream, this._meterData);
+    this._legacyLogger.on("line", (line) => this.emit("packet", line));
   }
 
   public stop() {

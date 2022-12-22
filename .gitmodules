@@ -1,3 +1,4 @@
 [submodule "meter-data"]
-	path = meter-data
-	url = ./meter-data/
+path = meter-data
+url = https://github.com/lost-ark-dev/meter-data
+branch = main
