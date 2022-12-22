@@ -417,11 +417,10 @@ app.on("ready", async () => {
     app.quit();
   } else {
     try {
-      // electronBridge = new ElectronBridge(appStore);
       loaLogger = new LostArkLogger();
-      loaLogger.start();
+      await loaLogger.start();
 
-      logger.info("Started packet listener");
+      logger.info(`Started packet listener - Listening on ${loaLogger.device}`);
     } catch (err) {
       logger.error("Failed to initialize electron bridge", err);
       app.quit();
