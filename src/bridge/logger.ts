@@ -41,7 +41,12 @@ export default class LostArkLogger extends EventEmitter {
 
     this._pktCapture = new PktCapture(device);
     this._pktCapture.on("packet", (buf) => {
-      this._pktStream?.read(buf);
+      try {
+        const badPkt = this._pktStream?.read(buf);
+        if (badPkt) logger.error("Bad packet", badPkt);
+      } catch (e) {
+        logger.error("PktCapture err", e);
+      }
     });
     logger.debug("Packet Capture initialized", { device });
 

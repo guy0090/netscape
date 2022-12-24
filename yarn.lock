@@ -7907,7 +7907,7 @@
     "mimic-fn" "^2.1.0"
 
 "oodle@github:Mathicha/oodle":
-  "resolved" "git+ssh://git@github.com/Mathicha/oodle.git#4b29d5a00fd42368b4a7c07e3d1e4f4766876c8e"
+  "resolved" "git+ssh://git@github.com/Mathicha/oodle.git#5d7623671ca3e908815b049892a8c056e6dcf6bc"
   "version" "0.0.0"
   dependencies:
     "@types/node" "*"
