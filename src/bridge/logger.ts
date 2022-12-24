@@ -33,7 +33,7 @@ export default class LostArkLogger extends EventEmitter {
   public async start() {
     this._xor = readFileSync(`${LostArkLogger.METER_DATA}/xor.bin`);
     this._oodle = readFileSync(`${LostArkLogger.METER_DATA}/oodle_state.bin`);
-    this._decompressor = new Decompressor(this._oodle, this._xor);
+    this._decompressor = new Decompressor(this._oodle, this._xor, logger.error);
     this._pktStream = new PKTStream(this._decompressor);
 
     const device = await getDevice();
@@ -126,9 +126,10 @@ const getDevice = async (): Promise<string> => {
     const host = os.hostname();
     dns.lookup(host, (err, address) => {
       if (err) j(err);
-
-      const device: string = findDevice(address);
-      r(device);
+      else {
+        const device: string = findDevice(address);
+        r(device);
+      }
     });
   });
 };
