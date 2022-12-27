@@ -21,6 +21,7 @@ export default class LostArkLogger extends EventEmitter {
   private _meterData: MeterData | undefined;
   private _legacyLogger: LegacyLogger | undefined;
   public device = "";
+  public address = "";
 
   static METER_DATA = isDevelopment
     ? path.resolve(__dirname, "../meter-data")
@@ -36,27 +37,26 @@ export default class LostArkLogger extends EventEmitter {
     this._decompressor = new Decompressor(this._oodle, this._xor, logger.error);
     this._pktStream = new PKTStream(this._decompressor);
 
-    const device = await getDevice();
+    const { address, device } = await getDevice();
     this.device = device;
+    this.address = address;
 
-    this._pktCapture = new PktCapture(device);
+    this._pktCapture = new PktCapture(address, device);
     this._pktCapture.on("packet", (buf) => {
       try {
         const badPkt = this._pktStream?.read(buf);
-        if (badPkt) logger.error("Bad packet", badPkt);
+        if (badPkt) logger.error("Bad packet", { pkt: buf.toString("hex") });
       } catch (e) {
         logger.error("PktCapture err", e);
       }
     });
-    logger.debug("Packet Capture initialized", { device });
+    logger.debug("Packet Capture initialized", { address, device });
 
     this._meterData = new MeterData();
     this.parseMeterData();
     logger.debug("Meter Data parsed");
 
-    this._legacyLogger = new LegacyLogger(this._pktStream, this._meterData, {
-      emitText: true,
-    });
+    this._legacyLogger = new LegacyLogger(this._pktStream, this._meterData);
     logger.debug("Legacy Logger initialized");
 
     this._legacyLogger.on("line", (line) => {
@@ -67,6 +67,8 @@ export default class LostArkLogger extends EventEmitter {
 
   public stop() {
     if (this._legacyLogger) {
+      this._pktCapture?.removeAllListeners();
+      this._pktCapture?.close();
       this._legacyLogger.removeAllListeners();
     } else {
       throw new Error("Legacy Logger is not initialized");
@@ -126,14 +128,14 @@ export default class LostArkLogger extends EventEmitter {
   }
 }
 
-const getDevice = async (): Promise<string> => {
+const getDevice = async (): Promise<{ address: string; device: string }> => {
   return new Promise((r, j) => {
     const host = os.hostname();
     dns.lookup(host, (err, address) => {
       if (err) j(err);
       else {
         const device: string = findDevice(address);
-        r(device);
+        r({ address, device });
       }
     });
   });

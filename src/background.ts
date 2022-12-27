@@ -212,18 +212,35 @@ async function createWindow() {
 }
 
 function startUpdater() {
-  autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater
+    .checkForUpdatesAndNotify()
+    .then((update) => {
+      logger.updater("Initial update check complete", update);
+      update?.downloadPromise
+        ?.then((download) => {
+          logger.updater("Initial update download complete", download);
+        })
+        .catch((e) => {
+          logger.updater("Initial update download failed", e);
+        });
+    })
+    .catch((err) => {
+      logger.updater("Initial update check failed", err);
+    });
+
   setInterval(() => {
-    try {
-      autoUpdater.checkForUpdatesAndNotify().catch((e) => {
-        logger.error("Failed to check for updates", e);
+    autoUpdater
+      .checkForUpdatesAndNotify()
+      .then((update) => {
+        logger.updater("Update check complete", update);
+      })
+      .catch((e) => {
+        logger.updater("Failed to check for updates", e);
       });
-    } catch (err) {
-      logger.error(`Unknown error during update check`, err);
-    }
   }, ms("10m")); // 10min checks
 
   autoUpdater.on("update-available", () => {
+    logger.updater("Update available");
     if (win) {
       win.webContents.send("fromMain", {
         event: "update-found",
@@ -241,6 +258,7 @@ function startUpdater() {
 
   autoUpdater.on("download-progress", (progressObj) => {
     const percent = Math.round(progressObj.percent);
+    logger.updater(`Update dl progress: ${percent}%`);
     if (win) {
       win.webContents.send("fromMain", {
         event: "update-progress",
@@ -252,6 +270,7 @@ function startUpdater() {
   });
 
   autoUpdater.on("update-downloaded", () => {
+    logger.updater("Update downloaded");
     if (win) {
       win.webContents.send("fromMain", {
         event: "update-downloaded",
@@ -422,7 +441,9 @@ app.on("ready", async () => {
       loaLogger = new LostArkLogger();
       await loaLogger.start();
 
-      logger.debug(`Logger started - Listening on device: ${loaLogger.device}`);
+      logger.debug(
+        `Logger started - Listening on device: ${loaLogger.device} (${loaLogger.address})`
+      );
     } catch (err) {
       logger.error("Failed to initialize electron bridge", err);
       app.quit();
@@ -601,7 +622,6 @@ if (isDevelopment) {
         packetParser.stopBroadcasting();
         // electronBridge.closeConnection();
         loaLogger.stop();
-        clearInterval(updateInterval);
         clearInterval(updateInterval);
         app.quit();
       }

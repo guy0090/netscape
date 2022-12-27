@@ -1,6 +1,6 @@
 import { logger } from "@/util/logging";
 import { getClassId, getClassName } from "@/util/game-classes";
-import { cloneDeep } from "lodash";
+import { cloneDeep, matchesProperty } from "lodash";
 import { EventEmitter } from "events";
 import {
   LINE_SPLIT_CHAR,
@@ -181,9 +181,8 @@ export class PacketParser extends EventEmitter {
 
   resetEntities(entities: Entity[]): Entity[] {
     const reset: Entity[] = [];
+    const timeout = DEFAULT_ENTITY_TIMEOUT;
     for (const entity of entities) {
-      const timeout = DEFAULT_ENTITY_TIMEOUT;
-
       if (+new Date() - entity.lastUpdate > timeout) {
         logger.parser("Expiring timed out entity", {
           id: entity.id,
@@ -433,14 +432,6 @@ export class PacketParser extends EventEmitter {
 
   // logId = 3 | On: A new player character is found (can be the user if the meter was started after a loading screen)
   onNewPc(packet: LogNewPc) {
-    if (packet.id === packet.name) {
-      logger.parser(
-        `New PC identifier (${packet.id}) and name (${packet.name}) are equal, skipping`,
-        packet
-      );
-      return;
-    }
-
     let user = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (!user) {
       logger.parser(`onNewPc: New user found`, packet);
@@ -468,7 +459,7 @@ export class PacketParser extends EventEmitter {
       user.class = packet.class;
       user.classId = packet.classId;
       user.type = EntityType.PLAYER;
-      user.gearLevel = packet.gearLevel;
+      if (packet.gearLevel > 0) user.gearLevel = packet.gearLevel;
 
       if (packet.id === this.activeUser.id) {
         user.name = this.activeUser.name;
@@ -504,12 +495,18 @@ export class PacketParser extends EventEmitter {
       });
     }
 
-    let npc = this.getEntity(packet.id); // || this.getEntity(packet.name, true);
+    let npc = this.getEntity(packet.id) || this.getEntity(packet.name, true);
     if (npc) {
       npc.currentHp = packet.currentHp;
       npc.maxHp = packet.maxHp;
       npc.name = packet.name;
       npc.id = packet.id;
+
+      // ? Reset misc. data if the NPC is already present (possibly wasn't expired)
+      npc.skills = {};
+      npc.battleItems = {};
+      npc.stats = new Stats();
+
       npc.lastUpdate = +new Date();
       logger.parser("Updating NPC", npc);
     } else {
@@ -517,7 +514,7 @@ export class PacketParser extends EventEmitter {
       logger.parser("New NPC", npc);
       // Only persist Boss-type NPCs
       if (isBoss || isGuardian) {
-        logger.parser("Persisted boss NPC");
+        logger.parser("Persisted boss NPC", { name: npc.name, id: npc.id });
         this.session.entities.push(npc);
       }
     }
@@ -583,6 +580,11 @@ export class PacketParser extends EventEmitter {
       sourceMissing = true;
     }
 
+    // FIXME: Log all player damage events for now to debug
+    if (source && source.type === EntityType.PLAYER) {
+      logger.parser("onDamage: Got player damage event", { packet });
+    }
+
     let target = this.getEntity(packet.targetId);
     if (!target) {
       target = this.getEntity(packet.targetName, true);
@@ -590,6 +592,10 @@ export class PacketParser extends EventEmitter {
         target.id = packet.targetId;
         target.currentHp = packet.currentHp;
         target.maxHp = packet.maxHp;
+        logger.parser("onDamage: Updated target entity", {
+          id: target.id,
+          name: target.name,
+        });
       } else return;
     }
 
@@ -681,8 +687,9 @@ export class PacketParser extends EventEmitter {
       const frontAttackCount = isFrontAttack ? 1 : 0;
 
       activeSkill.stats.damageDealt += packet.damage;
-      if (packet.damage > activeSkill.stats.topDamage)
+      if (packet.damage > activeSkill.stats.topDamage) {
         activeSkill.stats.topDamage = packet.damage;
+      }
 
       source.stats.damageDealt += packet.damage;
       target.stats.damageTaken += packet.damage;
@@ -727,7 +734,7 @@ export class PacketParser extends EventEmitter {
 
     const boss = this.getBoss();
     if (this.session.firstPacket === 0) {
-      logger.parser(`Starting session with boss: ${boss?.name}`, { boss });
+      logger.parser(`Starting session with possible boss: ${boss?.name}`);
       this.session.firstPacket = packet.timestamp;
       this.previousSession = undefined;
 

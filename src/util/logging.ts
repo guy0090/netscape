@@ -54,6 +54,10 @@ const warnAndErrorFilter = format((info) => {
 const parserFilter = format((info) => {
   return info.level === "parser" ? info : false;
 });
+
+const updaterFilter = format((info) => {
+  return info.level === "updater" ? info : false;
+});
 // #endregion
 
 // Custom log levels
@@ -67,6 +71,7 @@ const customLevels: config.AbstractConfigSetLevels = {
   debug: 5,
   silly: 6,
   parser: 7,
+  updater: 8,
 };
 
 interface CustomLevels extends Logger {
@@ -78,6 +83,7 @@ interface CustomLevels extends Logger {
   debug: LeveledLogMethod;
   silly: LeveledLogMethod;
   parser: LeveledLogMethod;
+  updater: LeveledLogMethod;
 }
 // #endregion
 
@@ -115,6 +121,17 @@ const customTransports = [
     handleExceptions: true,
     zippedArchive: true,
     format: combine(parserFilter(), fileFormat),
+  }),
+  // Updater log
+  new winstonDaily({
+    level: "updater",
+    dirname: logDir + "/updater",
+    filename: `NETSCAPE_UPDATER_%DATE%.log`,
+    maxFiles: 4, // keep 2 days worth of logs
+    frequency: "12h",
+    handleExceptions: true,
+    zippedArchive: true,
+    format: combine(updaterFilter(), fileFormat),
   }),
 ];
 
