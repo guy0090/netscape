@@ -49,7 +49,12 @@ module.exports = defineConfig({
       builderOptions: {
         productName: "Netscape Navigator",
         appId: "netscape.app",
-        publish: ["github"],
+        publish: [
+          {
+            provider: "github",
+            releaseType: "draft",
+          },
+        ],
         extraFiles: ["meter-data/"],
         fileAssociations: [
           {

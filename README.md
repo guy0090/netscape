@@ -14,3 +14,9 @@ npm run electron:serve
 ```
 npm run electron:build
 ```
+
+### Publish
+Rename `publish.default.sh` to `publish.sh` and provide correct [access token](https://github.com/settings/tokens)
+```
+npm run publish
+```
