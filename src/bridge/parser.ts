@@ -54,12 +54,12 @@ import AppStore from "@/persistance/store";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-// TODO: Time player out if they havent been updated in 25min
-export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 25;
-// TODO: Time bosses out if they havent been updated in 25min
-export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 25;
-// TODO: Time everything else out if they havent been updated in 30min
-export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 30;
+// * Time player out if they havent been updated in 10min
+export const PLAYER_ENTITY_TIMEOUT = 60 * 1000 * 10;
+// * Time bosses out if they havent been updated in 10min
+export const BOSS_ENTITY_TIMEOUT = 60 * 1000 * 10;
+// * Time everything else out if they havent been updated in 10min
+export const DEFAULT_ENTITY_TIMEOUT = 60 * 1000 * 10;
 
 export interface ActiveUser {
   id: string;
@@ -93,7 +93,7 @@ export class PacketParser extends EventEmitter {
   private activeUser: ActiveUser;
   private appStore: AppStore;
 
-  // TODO: Temp workaround for valtan ghost phase
+  // ! Temp workaround for valtan ghost phase
   private valtanGhostId: string | undefined = undefined;
 
   constructor(appStore: AppStore, config: PacketParserConfig = {}) {
@@ -183,7 +183,9 @@ export class PacketParser extends EventEmitter {
     const reset: Entity[] = [];
     const timeout = DEFAULT_ENTITY_TIMEOUT;
     for (const entity of entities) {
-      if (+new Date() - entity.lastUpdate > timeout) {
+      // ! Special case for active user; never expire
+      const isActiveUser = entity.id === this.activeUser.id;
+      if (+new Date() - entity.lastUpdate > timeout && !isActiveUser) {
         logger.parser("Expiring timed out entity", {
           id: entity.id,
           name: entity.name,
@@ -481,7 +483,7 @@ export class PacketParser extends EventEmitter {
     else if (isGuardian) packet.type = EntityType.GUARDIAN;
     else packet.type = EntityType.MONSTER;
 
-    // TODO: name is passed in korean
+    // ! name is passed in korean
     if (packet.npcId === 42060070) {
       packet.name = "Ravaged Tyrant of Beasts";
       packet.id = this.valtanGhostId as string;
@@ -578,11 +580,6 @@ export class PacketParser extends EventEmitter {
     if (!source) {
       source = new Entity({ id: packet.sourceId, name: packet.sourceName });
       sourceMissing = true;
-    }
-
-    // FIXME: Log all player damage events for now to debug
-    if (source && source.type === EntityType.PLAYER) {
-      logger.parser("onDamage: Got player damage event", { packet });
     }
 
     let target = this.getEntity(packet.targetId);
@@ -777,7 +774,7 @@ export class PacketParser extends EventEmitter {
   }
 
   onBuff(packet: LogBuff) {
-    // TODO: Workaround for valtan ghost damage
+    // ! Workaround for valtan ghost damage
     if (
       packet.buffName ===
       "하얗게 불사르고 망령화_마수군단장의 근성 감소 버프 제거 인보크 버프"

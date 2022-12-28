@@ -1,4 +1,4 @@
-import { EntityType, LogBattleItem } from "@/bridge/log-lines";
+import { EntityType } from "@/bridge/log-lines";
 import { v4 as uuidv4 } from "uuid";
 
 export class Session {
