@@ -1,5 +1,9 @@
 import { Decompressor } from "meter-core/dist/decompressor";
-import { findDevice } from "meter-core/dist/pkt-capture";
+import {
+  findDevice,
+  PktCaptureAll,
+  PktCaptureMode,
+} from "meter-core/dist/pkt-capture";
 import { PKTStream } from "meter-core/dist/pkt-stream";
 import { LegacyLogger } from "meter-core/dist/legacy-logger";
 import { MeterData } from "meter-core/dist/data";
@@ -13,7 +17,7 @@ import dns from "dns";
 const isDevelopment = process.env.NODE_ENV !== "production";
 export default class LostArkLogger extends EventEmitter {
   private _decompressor: Decompressor | undefined;
-  // private _pktCapture: PktCapture | undefined;
+  private _pktCapture: PktCaptureAll | undefined;
   private _pktStream: PKTStream | undefined;
   private _xor: Buffer | undefined;
   private _oodle: Buffer | undefined;
@@ -47,6 +51,22 @@ export default class LostArkLogger extends EventEmitter {
     this._legacyLogger.on("line", (line) => {
       // logger.debug(line);
       this.emit("packet", line);
+    });
+
+    this._pktCapture = new PktCaptureAll(PktCaptureMode.MODE_PCAP);
+    logger.info(
+      `Listening on ${this._pktCapture.captures.size} devices(s): ${[
+        ...this._pktCapture.captures.keys(),
+      ].join(", ")}`
+    );
+
+    this._pktCapture.on("packet", (buf) => {
+      try {
+        const badPkt = this._pktStream?.read(buf);
+        if (badPkt === false) logger.error(`bad pkt ${buf.toString("hex")}`);
+      } catch (e) {
+        logger.error(e);
+      }
     });
   }
 

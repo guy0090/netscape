@@ -440,10 +440,6 @@ app.on("ready", async () => {
     try {
       loaLogger = new LostArkLogger();
       await loaLogger.start();
-
-      logger.debug(
-        `Logger started - Listening on device: ${loaLogger.device} (${loaLogger.address})`
-      );
     } catch (err) {
       logger.error("Failed to initialize electron bridge", err);
       app.quit();
