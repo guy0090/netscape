@@ -1,5 +1,5 @@
 import { Decompressor } from "meter-core/dist/decompressor";
-import { PktCapture, findDevice } from "meter-core/dist/pkt-capture";
+import { findDevice } from "meter-core/dist/pkt-capture";
 import { PKTStream } from "meter-core/dist/pkt-stream";
 import { LegacyLogger } from "meter-core/dist/legacy-logger";
 import { MeterData } from "meter-core/dist/data";
@@ -11,10 +11,9 @@ import os from "os";
 import dns from "dns";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
-
 export default class LostArkLogger extends EventEmitter {
   private _decompressor: Decompressor | undefined;
-  private _pktCapture: PktCapture | undefined;
+  // private _pktCapture: PktCapture | undefined;
   private _pktStream: PKTStream | undefined;
   private _xor: Buffer | undefined;
   private _oodle: Buffer | undefined;
@@ -34,23 +33,9 @@ export default class LostArkLogger extends EventEmitter {
   public async start() {
     this._xor = readFileSync(`${LostArkLogger.METER_DATA}/xor.bin`);
     this._oodle = readFileSync(`${LostArkLogger.METER_DATA}/oodle_state.bin`);
-    this._decompressor = new Decompressor(this._oodle, this._xor, logger.error);
+    this._decompressor = new Decompressor(this._oodle, this._xor);
     this._pktStream = new PKTStream(this._decompressor);
-
-    const { address, device } = await getDevice();
-    this.device = device;
-    this.address = address;
-
-    this._pktCapture = new PktCapture(address, device);
-    this._pktCapture.on("packet", (buf) => {
-      try {
-        const badPkt = this._pktStream?.read(buf);
-        if (badPkt) logger.error("Bad packet", { pkt: buf.toString("hex") });
-      } catch (e) {
-        logger.error("PktCapture err", e);
-      }
-    });
-    logger.debug("Packet Capture initialized", { address, device });
+    logger.debug("PKTStream initialized");
 
     this._meterData = new MeterData();
     this.parseMeterData();
@@ -67,8 +52,6 @@ export default class LostArkLogger extends EventEmitter {
 
   public stop() {
     if (this._legacyLogger) {
-      this._pktCapture?.removeAllListeners();
-      this._pktCapture?.close();
       this._legacyLogger.removeAllListeners();
     } else {
       throw new Error("Legacy Logger is not initialized");
