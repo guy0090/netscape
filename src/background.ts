@@ -458,7 +458,9 @@ app.on("ready", async () => {
 
     const { width } = screen.getPrimaryDisplay().size;
 
-    const windowRgx = /LOST ARK \(64-bit, DX11\) v.[0-9].[0-9].[0-9].[0-9]/;
+    const windowRgx =
+      /LOST ARK \(64-bit, DX11\) v.[0-9](?:[0.9])?.[0-9](?:[0.9])?.[0-9](?:[0.9])?.[0-9](?:[0.9])?/;
+
     const lostArkWindow = winctl.GetWindowByClassName(
       "EFLaunchUnrealUWindowsClient"
     );
