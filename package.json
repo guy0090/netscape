@@ -1,6 +1,6 @@
 {
   "name": "netscape",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "main": "background.js",
   "repository": {
     "type": "git",

@@ -7250,7 +7250,7 @@
   "version" "1.4.1"
 
 "meter-core@github:guy0090/meter-core":
-  "resolved" "git+ssh://git@github.com/guy0090/meter-core.git#3b795b550b1040b8e6d714577db677ea70ac9db1"
+  "resolved" "git+ssh://git@github.com/guy0090/meter-core.git#41972d36a450d36cc9f7a5a2b4373ed9097c4747"
   "version" "0.0.0"
   dependencies:
     "cap" "^0.2.1"
