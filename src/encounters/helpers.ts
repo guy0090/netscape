@@ -1,9 +1,11 @@
 import os from "os";
 import fs from "fs";
+import ms from "ms";
+import _ from "lodash";
+import { glob, globSync } from "glob";
 import { logger } from "@/util/logging";
 import { Entity, Session } from "./objects";
 import { Brotli, Gzip } from "@/util/compression";
-import glob from "glob";
 import { getClassName } from "@/util/game-classes";
 import { getClassIdFromSkillId } from "@/util/skills";
 import { EntityType } from "@/bridge/log-lines";
@@ -26,6 +28,10 @@ export const encounterDirExists = async (create = false) => {
   }
 };
 
+/**
+ * Save an encounter to file. If not in debug mode, will only save encounters
+ * that are longer than 1 minute.
+ */
 export const saveEncounter = async (
   encounter: Session,
   compress = true,
@@ -37,6 +43,8 @@ export const saveEncounter = async (
     const name = getNewEncounterName(encounter);
     const file = `${ENCOUNTER_DIR}\\${name}`;
     const data = JSON.stringify(encounter);
+
+    const encounterDuration = encounter.lastPacket - encounter.firstPacket;
 
     if (debug) {
       const now = new Date();
@@ -52,6 +60,7 @@ export const saveEncounter = async (
       await fs.promises.writeFile(file + ".enc", compressed);
       await fs.promises.writeFile(file + ".json", data);
     } else if (compress) {
+      if (encounterDuration < ms("1m")) return;
       const now = new Date();
       const compressed =
         compressWith === "gzip"
@@ -64,6 +73,7 @@ export const saveEncounter = async (
       );
       await fs.promises.writeFile(file + ".enc", compressed);
     } else {
+      if (encounterDuration < ms("1m")) return;
       await fs.promises.writeFile(file + ".json", data);
     }
     logger.info(`Saved encounter to ${file}`);
@@ -92,6 +102,23 @@ export const readEncounter = async (
   }
 };
 
+export const readEncounterSync = (
+  path: string,
+  compression: "gzip" | "brotli" = "gzip"
+) => {
+  try {
+    const data = fs.readFileSync(path);
+    const uncompressed =
+      compression === "gzip"
+        ? Gzip.decompressSync(data)
+        : Brotli.decompressSync(data);
+    return new Session(JSON.parse(uncompressed));
+  } catch (err) {
+    logger.error("Error reading encounter", err);
+    return undefined;
+  }
+};
+
 export const getNewEncounterName = (session: Session) => {
   const boss = session.getBoss();
   const dateString = formatDate(
@@ -117,6 +144,15 @@ export const formatDate = (number?: number) => {
   return date;
 };
 
+export const getDateFromEncounterName = (encounterName: string) => {
+  encounterName = encounterName.replace(".enc", "");
+  const parts = encounterName.split("_");
+  const date = parts[1];
+  const time = parts[2].split("-");
+
+  return new Date(`${date}T${time[0]}:${time[1]}:${time[2]}.${time[3]}Z`);
+};
+
 export const renameEncounter = async (oldPath: string, session: Session) => {
   try {
     const outPath = `${ENCOUNTER_DIR}\\${getNewEncounterName(session)}.enc`;
@@ -132,7 +168,7 @@ export const renameEncounter = async (oldPath: string, session: Session) => {
 export const renameOldEncounters = async () => {
   try {
     const globDir = ENCOUNTER_DIR.replace(/\\/g, "/");
-    const encounters = glob.sync(`${globDir}/*.enc`);
+    const encounters = globSync(`${globDir}/*.enc`);
     for (const enc of encounters) {
       let session: Session;
       try {
@@ -179,4 +215,39 @@ export const trySetClassFromSkills = (player: Entity) => {
     }
     return true;
   });
+};
+
+let recentCache: string[] | undefined;
+export const getRecentEncountersFromDisk = async (max = 10) => {
+  try {
+    await encounterDirExists(true);
+    const allFiles = await glob(`/*.enc`, {
+      root: ENCOUNTER_DIR,
+      stat: true,
+      withFileTypes: true,
+    });
+    if (allFiles.length === 0) return [];
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    allFiles.sort((a, b) => b.birthtimeMs! - a.birthtimeMs!);
+    const sorted = allFiles.splice(0, max);
+
+    const currentFiles = sorted.map((f) => f.name);
+    if (recentCache && _.isEqual(recentCache, currentFiles)) {
+      // * logger.debug("No new recent encounters found");
+      return undefined;
+    }
+    recentCache = [...currentFiles];
+
+    const promises = [];
+    for (const file of sorted) {
+      promises.push(readEncounter(file.fullpath()));
+    }
+
+    const loadedEncounters = await Promise.all(promises);
+    return loadedEncounters.map((enc) => enc.toSimpleObject());
+  } catch (err) {
+    logger.error("Error getting recent encounters", err);
+    return Promise.reject(err);
+  }
 };

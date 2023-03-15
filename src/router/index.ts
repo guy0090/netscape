@@ -5,8 +5,8 @@ import Meter from "@/pages/Meter.vue";
 import HPBar from "@/pages/HPBar.vue";
 
 import SessionView from "@/views/SessionView.vue";
-import BreakdownPage from "@/views/BreakdownView.vue";
-import SettingsPage from "@/views/SettingsView.vue";
+import BreakdownView from "@/views/BreakdownView.vue";
+import SettingsView from "@/views/SettingsView.vue";
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -26,12 +26,12 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: "breakdown/:entityId",
         name: "breakdown",
-        component: BreakdownPage,
+        component: BreakdownView,
       },
       {
         path: "settings",
         name: "settings",
-        component: SettingsPage,
+        component: SettingsView,
       },
     ],
   },

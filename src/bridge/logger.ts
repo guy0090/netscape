@@ -1,9 +1,5 @@
 import { Decompressor } from "meter-core/dist/decompressor";
-import {
-  findDevice,
-  PktCaptureAll,
-  PktCaptureMode,
-} from "meter-core/dist/pkt-capture";
+import { PktCaptureAll, PktCaptureMode } from "meter-core/dist/pkt-capture";
 import { PKTStream } from "meter-core/dist/pkt-stream";
 import { LegacyLogger } from "meter-core/dist/legacy-logger";
 import { MeterData } from "meter-core/dist/data";
@@ -11,8 +7,6 @@ import { EventEmitter } from "events";
 import { readFileSync } from "fs";
 import { logger } from "@/util/logging";
 import path from "path";
-import os from "os";
-import dns from "dns";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 export default class LostArkLogger extends EventEmitter {
@@ -49,7 +43,6 @@ export default class LostArkLogger extends EventEmitter {
     logger.debug("Legacy Logger initialized");
 
     this._legacyLogger.on("line", (line) => {
-      // logger.debug(line);
       this.emit("packet", line);
     });
 
@@ -130,16 +123,3 @@ export default class LostArkLogger extends EventEmitter {
     );
   }
 }
-
-const getDevice = async (): Promise<{ address: string; device: string }> => {
-  return new Promise((r, j) => {
-    const host = os.hostname();
-    dns.lookup(host, (err, address) => {
-      if (err) j(err);
-      else {
-        const device: string = findDevice(address);
-        r({ address, device });
-      }
-    });
-  });
-};

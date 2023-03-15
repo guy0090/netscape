@@ -144,8 +144,6 @@ export default defineComponent({
   name: "App",
 
   mounted() {
-    // if (this.vCons) this.vCons.destroy();
-    // this.vCons = new VConsole({ theme: "dark" });
     this.getVersion()
       .then((version) => {
         this.version = version;
@@ -340,7 +338,6 @@ export default defineComponent({
             this.isPaused = false;
             break;
           case "reset-session":
-            // this.debug("FOO RESET");
             break;
           case "zone-change":
             this.debug("Got zone change, trying to start minify timer");
@@ -552,9 +549,8 @@ export default defineComponent({
         );
 
         if (bossEntities.length > 0) {
-          const mostRecentBoss = bossEntities.sort(
-            (a, b) => b.lastUpdate - a.lastUpdate
-          )[0];
+          bossEntities.sort((a, b) => b.lastUpdate - a.lastUpdate);
+          const mostRecentBoss = bossEntities[0];
 
           return `| ${mostRecentBoss.name}`;
         } else {
@@ -650,6 +646,7 @@ export default defineComponent({
     let session = reactive({
       paused: false,
       live: false,
+      fromHistory: false,
       firstPacket: 0,
       lastPacket: 0,
       entities: [],

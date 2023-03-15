@@ -2,7 +2,6 @@ import { logger } from "@/util/logging";
 import ms from "ms";
 import { Entity, Session, SkillBreakdown } from "@/encounters/objects";
 import AppStore from "@/persistance/store";
-// import AppStore from "@/persistance/store";
 import axios from "axios";
 import { shell } from "electron";
 import { cloneDeep } from "lodash";
@@ -24,10 +23,8 @@ export const uploadSession = async (appStore: AppStore, session: Session) => {
     );
     // If multiple bosses are logged, only keep the most recent one
     if (bosses.length > 1) {
-      const filtered = bosses
-        .sort((a, b) => b.lastUpdate - a.lastUpdate)
-        .slice(1)
-        .map((e) => e.id);
+      bosses.sort((a, b) => b.lastUpdate - a.lastUpdate);
+      const filtered = bosses.slice(1).map((e) => e.id);
 
       session.entities = session.entities.filter(
         (e) => !filtered.includes(e.id)
@@ -106,9 +103,8 @@ export const validateUpload = (session: Session) => {
     return false;
   }
 
-  const mostRecentDamaged = bossEntities.sort(
-    (a, b) => b.lastUpdate - a.lastUpdate
-  )[0];
+  bossEntities.sort((a, b) => b.lastUpdate - a.lastUpdate);
+  const mostRecentDamaged = bossEntities[0];
 
   if (mostRecentDamaged.lastUpdate + 1000 * 60 * 10 < +new Date()) {
     logger.debug(

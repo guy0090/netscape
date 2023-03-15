@@ -6,6 +6,7 @@ export class Session {
   public unlisted?: boolean;
   public paused: boolean;
   public live: boolean;
+  public fromHistory?: boolean;
   public protocol?: boolean;
   public firstPacket: number;
   public lastPacket: number;
@@ -18,6 +19,7 @@ export class Session {
     unlisted?: boolean;
     paused?: boolean;
     live?: boolean;
+    fromHistory?: boolean;
     protocol?: boolean;
     firstPacket?: number;
     lastPacket?: number;
@@ -29,6 +31,7 @@ export class Session {
     this.unlisted = session?.unlisted ?? true;
     this.paused = session?.paused ?? false;
     this.live = session?.live ?? true;
+    this.fromHistory = session?.fromHistory ?? false;
     this.protocol = session?.protocol ?? false;
     this.firstPacket = session?.firstPacket || 0;
     this.lastPacket = session?.lastPacket || 0;
@@ -75,7 +78,8 @@ export class Session {
 
     let boss;
     if (bosses.length > 1) {
-      boss = bosses.sort((a, b) => b.lastUpdate - a.lastUpdate)[0];
+      bosses.sort((a, b) => b.lastUpdate - a.lastUpdate);
+      boss = bosses[0];
     } else if (bosses.length === 1) {
       boss = bosses[0];
     } else {
@@ -303,6 +307,7 @@ export class BattleItemStats {
 export class SimpleSession {
   public paused: boolean;
   public live: boolean;
+  public fromHistory: boolean;
   public firstPacket: number;
   public lastPacket: number;
   public entities: SimpleEntity[];
@@ -311,6 +316,7 @@ export class SimpleSession {
   constructor(session: Session) {
     this.paused = session.paused || false;
     this.live = session.live || false;
+    this.fromHistory = session.fromHistory || false;
     this.firstPacket = session.firstPacket || 0;
     this.lastPacket = session.lastPacket || 0;
     this.entities = session.entities.map((entity) => new SimpleEntity(entity));

@@ -79,6 +79,22 @@ export const Brotli = {
       );
     });
   },
+
+  /**
+   * Decompress a buffer to string format in a synchronous manner.
+   * @param buffer The buffer to decompress
+   * @param encoding The encoding to use
+   * @returns The decompressed string
+   */
+  decompressSync(buffer: Buffer, encoding = "utf8"): string {
+    return zlib
+      .brotliDecompressSync(buffer, {
+        params: {
+          [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
+        },
+      })
+      .toString(encoding as BufferEncoding);
+  },
 };
 
 /**
@@ -135,5 +151,15 @@ export const Gzip = {
         }
       });
     });
+  },
+
+  /**
+   * Decompress a buffer to string format in a synchronous manner.
+   * @param buffer The buffer to decompress
+   * @param encoding The encoding to use
+   * @returns The decompressed string
+   */
+  decompressSync(buffer: Buffer, encoding = "utf8"): string {
+    return zlib.gunzipSync(buffer).toString(encoding as BufferEncoding);
   },
 };

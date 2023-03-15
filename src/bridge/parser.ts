@@ -1,6 +1,6 @@
 import { logger } from "@/util/logging";
 import { getClassId, getClassName } from "@/util/game-classes";
-import { cloneDeep, matchesProperty } from "lodash";
+import { cloneDeep } from "lodash";
 import { EventEmitter } from "events";
 import {
   LINE_SPLIT_CHAR,
@@ -71,13 +71,13 @@ export interface ActiveUser {
 }
 
 export interface PacketParserConfig {
-  resetOnZoneChange?: boolean | undefined;
-  removeOverkillDamage?: boolean | undefined;
-  pauseOnPhaseTransition?: boolean | undefined;
-  uploadLogs?: boolean | undefined;
-  openUploadInBrowser?: boolean | undefined;
-  startSending?: boolean | undefined;
-  uploadUnlisted?: boolean | undefined;
+  resetOnZoneChange?: boolean;
+  removeOverkillDamage?: boolean;
+  pauseOnPhaseTransition?: boolean;
+  uploadLogs?: boolean;
+  openUploadInBrowser?: boolean;
+  startSending?: boolean;
+  uploadUnlisted?: boolean;
 }
 
 export class PacketParser extends EventEmitter {
@@ -307,9 +307,8 @@ export class PacketParser extends EventEmitter {
     );
 
     if (bosses.length > 0) {
-      return bosses.sort((a, b) => {
-        return b.lastUpdate - a.lastUpdate;
-      })[0];
+      bosses.sort((a, b) => b.lastUpdate - a.lastUpdate);
+      return bosses[0];
     } else {
       return undefined;
     }
@@ -371,9 +370,9 @@ export class PacketParser extends EventEmitter {
         case 9:
           this.onHeal(new LogHeal(lineSplit));
           break;
-        /* case 10:
-        this.onBuff(lineSplit);
-        break; */
+        case 10:
+          this.onBuff(new LogBuff(lineSplit));
+          break;
         case 12:
           this.onCounter(new LogCounterAttack(lineSplit));
           break;
@@ -383,7 +382,6 @@ export class PacketParser extends EventEmitter {
       }
 
       if (!this.session.paused) this.session.lastPacket = timestamp;
-      // this.broadcastSessionChange();
     } catch (err) {
       logger.error(`Failed to parse log line: ${(err as Error).message}`);
     }

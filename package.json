@@ -1,6 +1,6 @@
 {
   "name": "netscape",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "main": "background.js",
   "repository": {
     "type": "git",
@@ -26,7 +26,7 @@
     "electron-overlay-window": "^2.0.1",
     "electron-store": "^8.0.1",
     "electron-updater": "^5.0.1",
-    "glob": "^8.0.3",
+    "glob": "^9.2.1",
     "keytar": "^7.9.0",
     "lodash": "^4.17.21",
     "meter-core": "github:guy0090/meter-core",

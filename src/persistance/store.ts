@@ -2,6 +2,7 @@ import { EventEmitter } from "events";
 import Store, { Schema } from "electron-store";
 import os from "os";
 import keytar from "keytar";
+import { logger } from "@/util/logging";
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -183,8 +184,8 @@ class AppStore extends EventEmitter {
       this.store.set("uploadKey", password);
 
       return true;
-    } catch {
-      console.error("Failed to set password");
+    } catch (err) {
+      logger.error("Failed to set password", err);
       return false;
     }
   }
@@ -200,8 +201,8 @@ class AppStore extends EventEmitter {
       }
 
       return pw;
-    } catch {
-      console.error("Failed to get password");
+    } catch (err) {
+      logger.error("Failed to get password", err);
       return undefined;
     }
   }
