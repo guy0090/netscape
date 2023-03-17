@@ -35,7 +35,7 @@ export default defineComponent({
   methods: {
     getIcon() {
       try {
-        return require(`@/assets/sprites/skills/${this.item?.id}.avif`);
+        return require(`@/assets/sprites/skills/${this.item?.id}.png`);
       } catch {
         return require("@/assets/sprites/emojis/42.avif");
       }

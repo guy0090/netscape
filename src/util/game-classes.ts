@@ -28,9 +28,9 @@ export const getClassName = (id: number): string => {
   if (id === 505) return "Scouter"; // Machinist?
   if (id === 511) return "FemaleGunner";
   if (id === 512) return "Gunslinger";
+  if (id === 601) return "Specialist";
   if (id === 602) return "Artist";
   if (id === 603) return "Aeromancer";
-
   return "UnknownClass";
 };
 
@@ -65,8 +65,8 @@ export const getClassId = (name: string): number => {
   if (name === "Artillerist") return 504;
   if (name === "Scouter") return 505;
   if (name === "Gunslinger") return 512;
+  if (name === "Specialist") return 601;
   if (name === "Artist") return 602;
   if (name === "Aeromancer") return 603;
-
   return 0;
 };

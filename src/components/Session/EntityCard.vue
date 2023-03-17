@@ -3,14 +3,7 @@
     <v-card-content>
       <v-row>
         <v-col cols="auto" class="py-1 px-1">
-          <v-img
-            class="class-icon"
-            :src="
-              require(`@/assets/sprites/classes/${
-                entity?.classId !== 0 ? entity?.classId : 102
-              }.avif`)
-            "
-          />
+          <v-img class="class-icon" :src="getClassIcon(entity?.classId)" />
         </v-col>
         <v-col class="py-1 px-3 align-self-center">
           <v-row class="pb-1">
@@ -104,7 +97,7 @@
         <v-col cols="auto" class="pa-0 me-1">
           <v-img
             class="class-icon-compact"
-            :src="require(`@/assets/sprites/classes/${entity?.classId}.avif`)"
+            :src="getClassIcon(entity?.classId)"
           />
         </v-col>
         <v-col class="py-1 ps-3 pe-4 align-self-center">
@@ -304,6 +297,13 @@ export default defineComponent({
 
       return abbreviated;
     },
+    getClassIcon(classId: string | number) {
+      try {
+        return require(`@/assets/sprites/classes/${classId}.png`);
+      } catch {
+        return require("@/assets/sprites/emojis/42.avif");
+      }
+    },
   },
 
   data() {
@@ -337,6 +337,8 @@ export default defineComponent({
       505: "#3b4292",
       511: "#541165",
       512: "#6bcec2",
+      602: "#dd4477", // TODO: Artist - Figure out a unique color
+      603: "#dd4477", // TODO: Aero - Figure out a unique color
     };
 
     return {
@@ -457,6 +459,16 @@ export default defineComponent({
 }
 .bg-512 {
   background-image: url("@/assets/sprites/class-colors/512.avif");
+  background-repeat: repeat-y;
+}
+
+.bg-602 {
+  background-image: url("@/assets/sprites/class-colors/602.avif");
+  background-repeat: repeat-y;
+}
+
+.bg-603 {
+  background-image: url("@/assets/sprites/class-colors/603.avif");
   background-repeat: repeat-y;
 }
 </style>

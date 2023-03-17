@@ -124,7 +124,7 @@ export default defineComponent({
     },
     getSkillIcon() {
       try {
-        return require(`@/assets/sprites/skills/${this.skill?.id}.avif`);
+        return require(`@/assets/sprites/skills/${this.skill?.id}.png`);
       } catch {
         return require("@/assets/sprites/emojis/42.avif");
       }
@@ -265,6 +265,8 @@ export default defineComponent({
       505: "#3b4292",
       511: "#541165",
       512: "#6bcec2",
+      602: "#dd4477", // TODO: Artist - Figure out a unique color
+      603: "#dd4477", // TODO: Aero - Figure out a unique color
     };
 
     let krRegex = /[\u3131-\uD79D]/iu;
@@ -373,6 +375,16 @@ export default defineComponent({
 }
 .bg-512 {
   background-image: url("@/assets/sprites/class-colors/512.avif");
+  background-repeat: repeat-y;
+}
+
+.bg-602 {
+  background-image: url("@/assets/sprites/class-colors/602.avif");
+  background-repeat: repeat-y;
+}
+
+.bg-603 {
+  background-image: url("@/assets/sprites/class-colors/603.avif");
   background-repeat: repeat-y;
 }
 </style>
