@@ -299,7 +299,7 @@ export default defineComponent({
     },
     getClassIcon(classId: string | number) {
       try {
-        return require(`@/assets/sprites/classes/${classId}.png`);
+        return require(`@/assets/sprites/classes/${classId}.webp`);
       } catch {
         return require("@/assets/sprites/emojis/42.avif");
       }
