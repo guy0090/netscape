@@ -1,5 +1,6 @@
 export const getClassName = (id: number): string => {
   if (id === 101) return "Warrior";
+  if (id === 111) return "Female Warrior";
   if (id === 201) return "Mage";
   if (id === 301) return "Martial Artist";
   if (id === 311) return "Male Martial Artist";
@@ -10,6 +11,7 @@ export const getClassName = (id: number): string => {
   if (id === 103) return "Destroyer";
   if (id === 104) return "Gunlancer";
   if (id === 105) return "Paladin";
+  if (id === 112) return "Slayer";
   if (id === 202) return "Arcana";
   if (id === 203) return "Summoner";
   if (id === 204) return "Bard";
@@ -36,6 +38,7 @@ export const getClassName = (id: number): string => {
 
 export const getClassId = (name: string): number => {
   if (name === "Warrior") return 101;
+  if (name === "Female Warrior") return 111;
   if (name === "Mage") return 201;
   if (name === "Martial Artist") return 301;
   if (name === "Assassin") return 401;
@@ -47,6 +50,7 @@ export const getClassId = (name: string): number => {
   if (name === "Destroyer") return 103;
   if (name === "Gunlancer") return 104;
   if (name === "Paladin") return 105;
+  if (name === "Slayer") return 112;
   if (name === "Arcana") return 202;
   if (name === "Summoner") return 203;
   if (name === "Bard") return 204;
